@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import GoogleButton from './GoogleButton'
 import PasswordInput from './PasswordInput'
@@ -219,21 +220,43 @@ function BrandPanel() {
 
 /* ----------------------------------- Page ----------------------------------- */
 
-export default function AuthPage({ initialView = 'login' }) {
-  const [view, setView] = useState(initialView) // 'login' | 'signup'
+export default function AuthPage() {
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  // View is driven by the URL: /login vs /signup
+  const view = location.pathname === '/signup' ? 'signup' : 'login'
   const isLogin = view === 'login'
 
-  /** Live Google OAuth via Supabase. */
+  // Error passed back after a rejected login (e.g. "Please sign up first")
+  const authError = location.state?.error
+
+  const switchView = (target) => {
+    navigate(target === 'login' ? '/login' : '/signup')
+  }
+
+  /** Live Google OAuth via Supabase, with Login/Sign-Up intent tracking. */
   const handleGoogleLogin = async () => {
+    // Stash WHICH action launched the flow — this survives the OAuth redirect
+    // and lets AuthContext enforce "log in" (existing) vs "sign up" (new).
+    sessionStorage.setItem('auth_intent', isLogin ? 'login' : 'signup')
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: `${window.location.origin}/login` },
     })
     if (error) console.error('Google sign-in error:', error.message)
   }
 
   return (
     <div className="grid min-h-screen bg-gray-50 lg:grid-cols-[1.05fr_1fr]">
+      <Link
+        to="/"
+        className="fixed left-4 top-4 z-50 rounded-full bg-white/90 px-4 py-2 text-sm font-medium text-gray-700 shadow-md ring-1 ring-gray-200 backdrop-blur transition hover:bg-white"
+      >
+        ← Back to home
+      </Link>
+
       <BrandPanel />
 
       <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10 sm:px-8">
@@ -252,6 +275,17 @@ export default function AuthPage({ initialView = 'login' }) {
 
           {/* Card */}
           <div className="rounded-2xl bg-white p-6 shadow-xl ring-1 ring-gray-900/5 sm:p-8">
+            {/* Auth error banner (e.g. new user tried to log in) */}
+            {authError && (
+              <div
+                role="alert"
+                className="mb-5 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+              >
+                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-red-500" aria-hidden="true" />
+                <p>{authError}</p>
+              </div>
+            )}
+
             {/* Login / Sign-Up switch */}
             <div
               className="grid grid-cols-2 rounded-xl bg-gray-100 p-1 text-sm font-medium"
@@ -266,7 +300,7 @@ export default function AuthPage({ initialView = 'login' }) {
                   key={tab.id}
                   role="tab"
                   aria-selected={view === tab.id}
-                  onClick={() => setView(tab.id)}
+                  onClick={() => switchView(tab.id)}
                   className={`h-9 rounded-lg transition duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 ${
                     view === tab.id
                       ? 'bg-white text-gray-900 shadow-sm'
@@ -304,7 +338,7 @@ export default function AuthPage({ initialView = 'login' }) {
               <>
                 New to EduBridge?{' '}
                 <button
-                  onClick={() => setView('signup')}
+                  onClick={() => switchView('signup')}
                   className="font-medium text-indigo-600 hover:text-indigo-500"
                 >
                   Create an account
@@ -314,7 +348,7 @@ export default function AuthPage({ initialView = 'login' }) {
               <>
                 Already have an account?{' '}
                 <button
-                  onClick={() => setView('login')}
+                  onClick={() => switchView('login')}
                   className="font-medium text-indigo-600 hover:text-indigo-500"
                 >
                   Log in

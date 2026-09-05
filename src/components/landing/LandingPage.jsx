@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import Navbar from './Navbar'
 import Hero from './Hero'
 import {
@@ -9,10 +10,15 @@ import {
 } from './Sections'
 import { CtaBanner, SiteFooter } from './Footer'
 
-export default function LandingPage({ onLogin, onRegister }) {
+export default function LandingPage() {
+  const navigate = useNavigate()
+
   return (
     <div className="min-h-screen bg-white antialiased">
-      <Navbar onLogin={onLogin} onRegister={onRegister} />
+      <Navbar
+        onLogin={() => navigate('/login')}
+        onRegister={() => navigate('/signup')}
+      />
       <main>
         <Hero />
         <Categories />
@@ -20,7 +26,7 @@ export default function LandingPage({ onLogin, onRegister }) {
         <HowItWorks />
         <RoleBento />
         <Testimonials />
-        <CtaBanner onRegister={onRegister} />
+        <CtaBanner onRegister={() => navigate('/signup')} />
       </main>
       <SiteFooter />
     </div>
