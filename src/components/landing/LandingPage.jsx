@@ -65,7 +65,7 @@ export default function LandingPage() {
         <HowItWorks />
         <RoleBento onComingSoon={portalSoon} />
         <Testimonials />
-        <CtaBanner onRegister={goSignup} onComingSoon={portalSoon} />
+        <CtaBanner onRegister={goSignup} />
       </main>
       <SiteFooter onComingSoon={pageSoon} />
       <Toast toast={toast} onDismiss={() => setToast(null)} />

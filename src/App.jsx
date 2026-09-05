@@ -9,6 +9,7 @@ import IndustryDashboard from './components/industry/IndustryDashboard'
 import AcademicDashboard from './components/academic/AcademicDashboard'
 import AdminLogin from './components/admin/AdminLogin'
 import AdminDashboard from './components/admin/AdminDashboard'
+import ContactPage from './components/ContactPage'
 import AskAiWidgetGate from './components/AskAiWidget'
 
 /** /signup?role=x folds into /login?role=x and auto-opens the sign-up modal —
@@ -52,6 +53,8 @@ export default function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<PublicOnlyRoute><AuthPage /></PublicOnlyRoute>} />
+          {/* Public support page — submissions land in the admin Support Inbox */}
+          <Route path="/contact" element={<ContactPage />} />
           {/* Admin back door — deliberately OUTSIDE the Supabase auth flow.
               Guards itself via the ix_admin sessionStorage flag. */}
           <Route path="/admin-login" element={<AdminLogin />} />

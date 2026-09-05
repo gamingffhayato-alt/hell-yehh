@@ -6,7 +6,7 @@ const SOON_CLASS = 'cursor-not-allowed opacity-75 hover:opacity-50'
 
 /* ------------------------------ CTA banner ------------------------------ */
 
-export function CtaBanner({ onRegister, onComingSoon }) {
+export function CtaBanner({ onRegister }) {
   return (
     <section className="bg-white px-4 pb-20 sm:px-6">
       <div className="relative mx-auto max-w-6xl overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-700 px-6 py-14 text-center sm:px-12 sm:py-16">
@@ -37,13 +37,13 @@ export function CtaBanner({ onRegister, onComingSoon }) {
               Create free account
               <ArrowRightIcon className="h-4 w-4" />
             </button>
-            {/* Concierge/demo flow isn't built yet → graceful coming-soon toast */}
-            <button
-              onClick={onComingSoon}
-              className={`flex h-12 items-center rounded-full border border-white/40 px-7 text-sm font-semibold text-white transition hover:bg-white/10 ${SOON_CLASS}`}
+            {/* Routes to the public Contact page */}
+            <Link
+              to="/contact"
+              className="flex h-12 items-center rounded-full border border-white/40 px-7 text-sm font-semibold text-white transition hover:bg-white/10"
             >
               Talk to our team
-            </button>
+            </Link>
           </div>
           <p className="mt-5 text-xs text-indigo-200">
             Free for candidates, always. No card required.
@@ -87,7 +87,7 @@ const FOOTER_COLS = [
       { label: 'About us' },
       { label: 'Careers' },
       { label: 'Blog' },
-      { label: 'Contact' },
+      { label: 'Contact', to: '/contact' },
     ],
   },
 ]

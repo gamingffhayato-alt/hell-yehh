@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ADMIN_FLAG } from './AdminLogin'
+import SupportInbox from './SupportInbox'
 import {
   BriefcaseIcon,
   ChartBarIcon,
@@ -169,6 +170,7 @@ export default function AdminDashboard() {
               ['Verification', '#verification'],
               ['Analytics', '#analytics'],
               ['Access Control', '#access'],
+              ['Inbox', '#inbox'],
             ].map(([label, href]) => (
               <a
                 key={label}
@@ -490,6 +492,9 @@ export default function AdminDashboard() {
             </div>
           </div>
         </section>
+
+        {/* ============================ Support Inbox ============================ */}
+        <SupportInbox notify={notify} />
       </main>
 
       {/* Toast */}
