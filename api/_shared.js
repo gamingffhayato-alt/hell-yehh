@@ -7,13 +7,15 @@
  *
  * The API key only ever lives server-side (process.env.AI_API_KEY on Vercel,
  * or AI_API_KEY in .env.local for `vite dev`). It is never shipped to the
- * bundle — the frontend only ever calls the same-origin /api/chat.
+ * bundle — the frontend only ever calls the same-origin /api/chat. The
+ * upstream is Groq's OpenAI-compatible API (override with AI_API_URL).
  */
 
-/** Model is fixed per the hackathon brief. */
+/** Model is fixed per the project brief — Groq hosts it (matches the Telegram bot). */
 export const AI_MODEL = 'openai/gpt-oss-20b'
 
-const DEFAULT_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions'
+/** Groq's OpenAI-compatible chat completions endpoint. */
+const DEFAULT_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
 
 /** Upstream timeout so a hung provider never hangs the demo. */
 const UPSTREAM_TIMEOUT_MS = 15_000

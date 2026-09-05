@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
-import { AI_PERSONAS, askInternXAI } from '../lib/ai'
+import { AI_PERSONAS, askInternXAI, demoReplyFor } from '../lib/ai'
 import { ArrowRightIcon, SparklesIcon, XIcon } from './Icons'
 
 /** Routes where the floating assistant appears. */
@@ -100,14 +100,14 @@ function AskAiWidget({ role }) {
       })
       setMessages((ms) => [...ms, { id: nextId(), from: 'bot', text: reply }])
     } catch (err) {
-      // Hackathon fallback — never break the demo: serve the role-specific
-      // canned answer after a short "thinking" beat.
+      // Hackathon fallback — never break the demo: serve a keyword-matched
+      // offline answer for this role after a short "thinking" beat.
       console.info('Ask AI using offline demo fallback:', err.message)
       setOffline(true)
       await new Promise((resolve) => {
         liveTimer.current = setTimeout(resolve, 650)
       })
-      setMessages((ms) => [...ms, { id: nextId(), from: 'bot', text: persona.fallback }])
+      setMessages((ms) => [...ms, { id: nextId(), from: 'bot', text: demoReplyFor(role, text) }])
     } finally {
       setTyping(false)
     }
