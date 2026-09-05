@@ -1,18 +1,14 @@
 -- EduBridge · profiles table
 -- Run once in the Supabase dashboard → SQL Editor.
--- Stores onboarding details collected on the /details page.
+-- Stores the role chosen at signup / on the "Complete Setup" screen.
 
 create table if not exists public.profiles (
   id         uuid primary key references auth.users (id) on delete cascade,
   email      text,
-  full_name  text,
   role       text check (role in ('student', 'industry', 'academician', 'institution')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-
--- If the table was created before full_name existed, add it with:
---   alter table public.profiles add column if not exists full_name text;
 
 alter table public.profiles enable row level security;
 
