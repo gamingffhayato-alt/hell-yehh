@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { GradCapIcon, MenuIcon, XIcon } from '../Icons'
+import { homeForRole, useAuth } from '../../lib/AuthContext'
+import { ArrowRightIcon, GradCapIcon, MenuIcon, XIcon } from '../Icons'
 
 const LINKS = [
   { label: 'Explore', href: '#categories' },
@@ -9,14 +10,30 @@ const LINKS = [
   { label: 'Why Intern X', href: '#why' },
 ]
 
+/**
+ * Landing navbar with dynamic auth state (consumes AuthContext directly —
+ * LandingPage is rendered inside <AuthProvider> in App.jsx):
+ *
+ *   status 'loading' → neutral skeleton pill (no flash of the wrong buttons
+ *                      while the stored session is being replayed)
+ *   signed in        → single primary "Go to Dashboard", role-aware
+ *                      (/dashboard for students, /industry-dashboard for
+ *                      industry partners)
+ *   signed out       → "Log in" + "Get started"
+ */
 export default function Navbar({ onLogin, onRegister }) {
+  const { session, profile, status } = useAuth()
+  const user = session?.user ?? null
+  // Role-aware home; a signed-in user with an incomplete profile is still
+  // routed to /details automatically by ProtectedRoute/OnboardingRoute.
+  const dashboardPath = homeForRole(profile?.role)
+
   const [open, setOpen] = useState(false)
   const close = () => setOpen(false)
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/90 backdrop-blur">
       <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-        {/* Brand */}
         {/* Brand — always routes back to the landing page */}
         <Link to="/" className="flex items-center gap-2.5" onClick={close}>
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-600 text-white">
@@ -38,20 +55,37 @@ export default function Navbar({ onLogin, onRegister }) {
           ))}
         </div>
 
-        {/* Actions (desktop) */}
+        {/* Actions (desktop) — auth-aware */}
         <div className="hidden items-center gap-2 lg:flex">
-          <button
-            onClick={onLogin}
-            className="h-10 rounded-full px-5 text-sm font-semibold text-gray-700 transition hover:bg-gray-100"
-          >
-            Log in
-          </button>
-          <button
-            onClick={onRegister}
-            className="h-10 rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 active:scale-[0.98]"
-          >
-            Get started
-          </button>
+          {status === 'loading' ? (
+            <span
+              className="h-10 w-44 animate-pulse rounded-full bg-gray-100"
+              aria-hidden="true"
+            />
+          ) : user ? (
+            <Link
+              to={dashboardPath}
+              className="flex h-10 items-center gap-2 rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 active:scale-[0.98]"
+            >
+              Go to Dashboard
+              <ArrowRightIcon className="h-4 w-4" />
+            </Link>
+          ) : (
+            <>
+              <button
+                onClick={onLogin}
+                className="h-10 rounded-full px-5 text-sm font-semibold text-gray-700 transition hover:bg-gray-100"
+              >
+                Log in
+              </button>
+              <button
+                onClick={onRegister}
+                className="h-10 rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 active:scale-[0.98]"
+              >
+                Get started
+              </button>
+            </>
+          )}
         </div>
 
         {/* Hamburger (mobile) */}
@@ -82,19 +116,38 @@ export default function Navbar({ onLogin, onRegister }) {
                 </a>
               ))}
             </div>
+            {/* Mobile actions — same auth-aware conditional rendering */}
             <div className="grid grid-cols-2 gap-3 pt-4">
-              <button
-                onClick={() => { close(); onLogin?.() }}
-                className="h-11 rounded-full border border-gray-300 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
-              >
-                Log in
-              </button>
-              <button
-                onClick={() => { close(); onRegister?.() }}
-                className="h-11 rounded-full bg-indigo-600 text-sm font-semibold text-white transition hover:bg-indigo-500"
-              >
-                Get started
-              </button>
+              {status === 'loading' ? (
+                <span
+                  className="col-span-2 h-11 animate-pulse rounded-full bg-gray-100"
+                  aria-hidden="true"
+                />
+              ) : user ? (
+                <Link
+                  to={dashboardPath}
+                  onClick={close}
+                  className="col-span-2 flex h-11 items-center justify-center gap-2 rounded-full bg-indigo-600 text-sm font-semibold text-white transition hover:bg-indigo-500"
+                >
+                  Go to Dashboard
+                  <ArrowRightIcon className="h-4 w-4" />
+                </Link>
+              ) : (
+                <>
+                  <button
+                    onClick={() => { close(); onLogin?.() }}
+                    className="h-11 rounded-full border border-gray-300 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                  >
+                    Log in
+                  </button>
+                  <button
+                    onClick={() => { close(); onRegister?.() }}
+                    className="h-11 rounded-full bg-indigo-600 text-sm font-semibold text-white transition hover:bg-indigo-500"
+                  >
+                    Get started
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
