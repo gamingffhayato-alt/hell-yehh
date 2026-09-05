@@ -7,6 +7,8 @@ import ProfilePage from './components/ProfilePage'
 import Dashboard from './components/Dashboard'
 import IndustryDashboard from './components/industry/IndustryDashboard'
 import AcademicDashboard from './components/academic/AcademicDashboard'
+import AdminLogin from './components/admin/AdminLogin'
+import AdminDashboard from './components/admin/AdminDashboard'
 import AskAiWidgetGate from './components/AskAiWidget'
 
 /** Signed-in-only routes. Incomplete profiles are always pushed to /details. */
@@ -43,6 +45,10 @@ export default function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<PublicOnlyRoute><AuthPage /></PublicOnlyRoute>} />
+          {/* Admin back door — deliberately OUTSIDE the Supabase auth flow.
+              Guards itself via the ix_admin sessionStorage flag. */}
+          <Route path="/admin-login" element={<AdminLogin />} />
+          <Route path="/admin-dashboard" element={<AdminDashboard />} />
           {/* Old sign-up route now folds into the login page's sign-up modal */}
           <Route path="/signup" element={<Navigate to="/login" replace state={{ openSignup: true }} />} />
           <Route path="/details" element={<OnboardingRoute><DetailsPage /></OnboardingRoute>} />

@@ -193,18 +193,6 @@ export default function IndustryDashboard() {
                       </button>
                     ))}
                     <div className="mt-1 border-t border-slate-700 pt-1">
-                      <Link
-                        to="/dashboard"
-                        className="block rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5"
-                      >
-                        Switch to student view
-                      </Link>
-                      <Link
-                        to="/academic-dashboard"
-                        className="block rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5"
-                      >
-                        Faculty view (demo)
-                      </Link>
                       <button
                         onClick={() => supabase.auth.signOut()}
                         className="block w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-rose-300 transition hover:bg-rose-500/10"
