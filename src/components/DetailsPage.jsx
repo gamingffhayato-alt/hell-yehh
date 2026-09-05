@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { useAuth } from '../lib/AuthContext'
+import { homeForRole, useAuth } from '../lib/AuthContext'
 import RoleSelect from './RoleSelect'
 import { GradCapIcon } from './Icons'
 
@@ -42,10 +42,11 @@ export default function DetailsPage() {
       return
     }
 
-    // Update the auth context → ProtectedRoute now lets /dashboard render.
+    // Update the auth context → ProtectedRoute now lets the dashboard render.
+    // Route by role: industry partners → their portal, others → /dashboard.
     setProfile(record)
     setStatus('ready')
-    navigate('/dashboard', { replace: true })
+    navigate(homeForRole(role), { replace: true })
   }
 
   return (

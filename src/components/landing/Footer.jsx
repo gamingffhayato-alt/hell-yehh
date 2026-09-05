@@ -1,8 +1,11 @@
 import { ArrowRightIcon, GradCapIcon } from '../Icons'
 
+/** Shared styling for un-built destinations: visibly disabled, dims on hover. */
+const SOON_CLASS = 'cursor-not-allowed opacity-75 hover:opacity-50'
+
 /* ------------------------------ CTA banner ------------------------------ */
 
-export function CtaBanner({ onRegister }) {
+export function CtaBanner({ onRegister, onComingSoon }) {
   return (
     <section className="bg-white px-4 pb-20 sm:px-6">
       <div className="relative mx-auto max-w-6xl overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-700 px-6 py-14 text-center sm:px-12 sm:py-16">
@@ -33,12 +36,13 @@ export function CtaBanner({ onRegister }) {
               Create free account
               <ArrowRightIcon className="h-4 w-4" />
             </button>
-            <a
-              href="#"
-              className="flex h-12 items-center rounded-full border border-white/40 px-7 text-sm font-semibold text-white transition hover:bg-white/10"
+            {/* Concierge/demo flow isn't built yet → graceful coming-soon toast */}
+            <button
+              onClick={onComingSoon}
+              className={`flex h-12 items-center rounded-full border border-white/40 px-7 text-sm font-semibold text-white transition hover:bg-white/10 ${SOON_CLASS}`}
             >
               Talk to our team
-            </a>
+            </button>
           </div>
           <p className="mt-5 text-xs text-indigo-200">
             Free for candidates, always. No card required.
@@ -51,34 +55,79 @@ export function CtaBanner({ onRegister }) {
 
 /* -------------------------------- Footer -------------------------------- */
 
+/**
+ * Every footer link does something real:
+ *   { href: '#jobs' }  → smooth-scrolls to a live section
+ *   { register: true } → opens the multi-step sign-up wizard
+ *   {}                 → page not built yet → coming-soon toast
+ */
 const FOOTER_COLS = [
   {
     heading: 'Candidates',
-    links: ['Browse jobs', 'Internships', 'Courses', 'Skill tests'],
+    links: [
+      { label: 'Browse jobs', href: '#jobs' },
+      { label: 'Internships', href: '#jobs' },
+      { label: 'Courses' },
+      { label: 'Skill tests' },
+    ],
   },
   {
     heading: 'Employers',
-    links: ['Post a job', 'Campus hiring', 'Pricing', 'Success stories'],
+    links: [
+      { label: 'Post a job', register: true },
+      { label: 'Campus hiring' },
+      { label: 'Pricing' },
+      { label: 'Success stories', href: '#stories' },
+    ],
   },
   {
     heading: 'Company',
-    links: ['About us', 'Careers', 'Blog', 'Contact'],
+    links: [
+      { label: 'About us' },
+      { label: 'Careers' },
+      { label: 'Blog' },
+      { label: 'Contact' },
+    ],
   },
 ]
 
-export function SiteFooter() {
+function FooterLink({ link, onRegister, onComingSoon }) {
+  if (link.href) {
+    return (
+      <a href={link.href} className="text-sm transition hover:text-white">
+        {link.label}
+      </a>
+    )
+  }
+  if (link.register) {
+    return (
+      <button onClick={onRegister} className="text-sm transition hover:text-white">
+        {link.label}
+      </button>
+    )
+  }
+  return (
+    <button onClick={onComingSoon} className={`text-sm transition ${SOON_CLASS}`}>
+      {link.label}
+    </button>
+  )
+}
+
+export function SiteFooter({ onRegister, onComingSoon }) {
+  const scrollTop = () => window.scrollTo({ top: 0, behavior: 'smooth' })
+
   return (
     <footer className="bg-gray-950 text-gray-400">
       <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
         <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
-          {/* Brand */}
+          {/* Brand — click returns to the top of the page */}
           <div>
-            <a href="#" className="flex items-center gap-2.5">
+            <button onClick={scrollTop} className="flex items-center gap-2.5" aria-label="Back to top">
               <span className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-600 text-white">
                 <GradCapIcon className="h-5 w-5" />
               </span>
               <span className="text-lg font-extrabold tracking-tight text-white">Intern X</span>
-            </a>
+            </button>
             <p className="mt-4 max-w-xs text-sm leading-relaxed">
               The bridge between campuses and careers — jobs, internships and
               learning, all in one place.
@@ -93,10 +142,8 @@ export function SiteFooter() {
               </h3>
               <ul className="mt-4 space-y-2.5">
                 {col.links.map((link) => (
-                  <li key={link}>
-                    <a href="#" className="text-sm transition hover:text-white">
-                      {link}
-                    </a>
+                  <li key={link.label}>
+                    <FooterLink link={link} onRegister={onRegister} onComingSoon={onComingSoon} />
                   </li>
                 ))}
               </ul>
@@ -107,9 +154,11 @@ export function SiteFooter() {
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 text-xs sm:flex-row">
           <p>© 2026 Intern X. Crafted with care in India.</p>
           <div className="flex gap-6">
-            <a href="#" className="transition hover:text-white">Privacy</a>
-            <a href="#" className="transition hover:text-white">Terms</a>
-            <a href="#" className="transition hover:text-white">Cookies</a>
+            {['Privacy', 'Terms', 'Cookies'].map((label) => (
+              <button key={label} onClick={onComingSoon} className={`transition ${SOON_CLASS}`}>
+                {label}
+              </button>
+            ))}
           </div>
         </div>
       </div>

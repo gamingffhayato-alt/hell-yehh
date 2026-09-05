@@ -1,8 +1,8 @@
+import { useState } from 'react'
 import {
+  ArrowRightIcon,
   BellIcon,
-  BriefcaseIcon,
   CheckIcon,
-  ClockIcon,
   MapPinIcon,
   SearchIcon,
   SparklesIcon,
@@ -66,7 +66,7 @@ function AvatarStack() {
 }
 
 /** Decorative composition of floating, CSS-built "live" job cards. */
-function JobStackVisual() {
+function JobStackVisual({ onGetStarted }) {
   return (
     <div className="relative mx-auto w-full max-w-md pb-8 lg:max-w-none">
       {/* Soft glows behind */}
@@ -106,7 +106,10 @@ function JobStackVisual() {
               <div className="h-full w-[96%] rounded-full bg-emerald-500" />
             </div>
           </div>
-          <button className="rounded-full bg-gray-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-gray-700">
+          <button
+            onClick={onGetStarted}
+            className="rounded-full bg-gray-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-gray-700"
+          >
             Apply now
           </button>
         </div>
@@ -147,7 +150,15 @@ function JobStackVisual() {
   )
 }
 
-export default function Hero() {
+export default function Hero({ onGetStarted, onSearch }) {
+  const [q, setQ] = useState('')
+  const [location, setLocation] = useState('')
+
+  const submitSearch = (e) => {
+    e.preventDefault()
+    onSearch({ q, location })
+  }
+
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-indigo-50 via-white to-white">
       {/* Faint dot texture on the top half */}
@@ -184,16 +195,35 @@ export default function Hero() {
             your inbox.
           </p>
 
-          {/* Search */}
+          {/* Primary CTAs — Get started opens the multi-step sign-up wizard */}
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <button
+              onClick={onGetStarted}
+              className="flex h-12 items-center justify-center gap-2 rounded-full bg-indigo-600 px-7 text-sm font-semibold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-500 active:scale-[0.98]"
+            >
+              Get started — it&apos;s free
+              <ArrowRightIcon className="h-4 w-4" />
+            </button>
+            <a
+              href="#jobs"
+              className="flex h-12 items-center justify-center rounded-full border border-gray-300 bg-white px-7 text-sm font-semibold text-gray-700 transition hover:border-indigo-300 hover:text-indigo-600"
+            >
+              Explore jobs
+            </a>
+          </div>
+
+          {/* Search — filters the Featured openings section below */}
           <form
-            onSubmit={(e) => e.preventDefault()}
-            className="mt-8 flex max-w-xl flex-col gap-2 rounded-2xl border border-gray-200 bg-white p-2 shadow-lg shadow-indigo-100/60 sm:flex-row sm:items-center sm:rounded-full"
+            onSubmit={submitSearch}
+            className="mt-6 flex max-w-xl flex-col gap-2 rounded-2xl border border-gray-200 bg-white p-2 shadow-lg shadow-indigo-100/60 sm:flex-row sm:items-center sm:rounded-full"
           >
             <div className="relative flex-1">
               <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 type="search"
                 placeholder="Role, skill or company"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
                 className="w-full bg-transparent py-3 pl-10 pr-3 text-sm text-gray-800 outline-none placeholder:text-gray-400"
               />
             </div>
@@ -202,6 +232,8 @@ export default function Hero() {
               <MapPinIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 placeholder="Location"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
                 className="w-full bg-transparent py-3 pl-9 pr-3 text-sm text-gray-800 outline-none placeholder:text-gray-400"
               />
             </div>
@@ -213,17 +245,19 @@ export default function Hero() {
             </button>
           </form>
 
-          <p className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
             Popular:
             {POPULAR.map((term) => (
               <button
                 key={term}
+                type="button"
+                onClick={() => onSearch({ q: term, location: '' })}
                 className="rounded-full bg-gray-100 px-2.5 py-1 font-medium text-gray-600 transition hover:bg-indigo-50 hover:text-indigo-600"
               >
                 {term}
               </button>
             ))}
-          </p>
+          </div>
 
           {/* Social proof */}
           <div className="mt-8 flex flex-wrap items-center gap-4">
@@ -241,7 +275,7 @@ export default function Hero() {
         </div>
 
         {/* ---------------------------- Visual ----------------------------- */}
-        <JobStackVisual />
+        <JobStackVisual onGetStarted={onGetStarted} />
       </div>
 
       {/* ------------------------- Company marquee ------------------------- */}

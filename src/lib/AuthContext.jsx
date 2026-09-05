@@ -22,6 +22,10 @@ export function FullScreenLoader({ label }) {
 /** A profile counts as "account exists + onboarding done" only when it has a role. */
 const isProfileComplete = (profile) => Boolean(profile?.role)
 
+/** Role-aware home route — industry partners get their own portal. */
+export const homeForRole = (role) =>
+  role === 'industry' ? '/industry-dashboard' : '/dashboard'
+
 /**
  * Central auth state machine.
  *
@@ -80,8 +84,6 @@ export function AuthProvider({ children }) {
           return
         }
 
-        let justOnboarded = false
-
         /* Email sign-up users carry their registration details in auth
            metadata (source: 'email_signup'). If the profiles row doesn't exist
            yet (e.g. first login after email confirmation — inserts are blocked
@@ -91,12 +93,19 @@ export function AuthProvider({ children }) {
           const record = {
             id: nextSession.user.id,
             email: nextSession.user.email,
-            full_name: md.full_name ?? null,
-            class_year: md.class_year ?? null,
-            course: md.course ?? null,
-            stream: md.stream ?? null,
-            institution: md.institution ?? null,
-            role: 'student',
+            full_name: md.full_name || null,
+            // Role chosen on step 1 of the sign-up wizard ('student' |
+            // 'industry'); older accounts without it fall back to student.
+            role: md.role || 'student',
+            marketing_source: md.marketing_source || null,
+            // Student academic details (null for industry partners)
+            class_year: md.class_year || null,
+            course: md.course || null,
+            stream: md.stream || null,
+            institution: md.institution || null,
+            // Industry partner details (null for students)
+            company_name: md.company_name || null,
+            job_title: md.job_title || null,
           }
           const { error: upsertError } = await supabase
             .from('profiles')
@@ -105,7 +114,6 @@ export function AuthProvider({ children }) {
             console.error('profile creation from signup metadata failed:', upsertError.message)
           } else {
             resolvedProfile = record
-            justOnboarded = true
           }
         }
 
@@ -136,9 +144,10 @@ export function AuthProvider({ children }) {
 
           if (complete) {
             setStatus('ready')
-            // A just-created email account goes to its profile; returning
-            // logins go to the dashboard.
-            navigate(justOnboarded ? '/profile' : '/dashboard', { replace: true })
+            // Dynamic redirect by role — applies both to a just-created
+            // account and to every returning login: industry partners →
+            // /industry-dashboard, students (and everyone else) → /dashboard.
+            navigate(homeForRole(resolvedProfile?.role), { replace: true })
           } else {
             // First-time sign-up (Google) → finish onboarding on /details.
             setStatus('needsOnboarding')

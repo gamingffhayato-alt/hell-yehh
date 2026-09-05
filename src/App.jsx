@@ -1,5 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { AuthProvider, FullScreenLoader, useAuth } from './lib/AuthContext'
+import { AuthProvider, FullScreenLoader, homeForRole, useAuth } from './lib/AuthContext'
 import LandingPage from './components/landing/LandingPage'
 import AuthPage from './components/AuthPage'
 import DetailsPage from './components/DetailsPage'
@@ -18,19 +18,19 @@ function ProtectedRoute({ children }) {
 
 /** Onboarding route — reachable only while signed in AND profile incomplete. */
 function OnboardingRoute({ children }) {
-  const { status } = useAuth()
+  const { status, profile } = useAuth()
   if (status === 'loading') return <FullScreenLoader label="Preparing your setup…" />
   if (status === 'signedOut') return <Navigate to="/login" replace />
-  if (status === 'ready') return <Navigate to="/dashboard" replace />
+  if (status === 'ready') return <Navigate to={homeForRole(profile?.role)} replace />
   return children
 }
 
-/** Login route — users who are already in get bounced forward. */
+/** Login route — users who are already in get bounced forward (role-aware). */
 function PublicOnlyRoute({ children }) {
-  const { status } = useAuth()
+  const { status, profile } = useAuth()
   if (status === 'loading') return <FullScreenLoader label="Loading…" />
   if (status === 'needsOnboarding') return <Navigate to="/details" replace />
-  if (status === 'ready') return <Navigate to="/dashboard" replace />
+  if (status === 'ready') return <Navigate to={homeForRole(profile?.role)} replace />
   return children
 }
 
