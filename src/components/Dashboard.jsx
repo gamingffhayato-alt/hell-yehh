@@ -1,4 +1,6 @@
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../lib/AuthContext'
 import {
   BellIcon,
   BookIcon,
@@ -9,10 +11,10 @@ import {
 } from './Icons'
 
 const ROLE_META = {
-  student: { label: 'Student', chip: 'bg-indigo-50 text-indigo-700' },
-  industry: { label: 'Industry', chip: 'bg-amber-50 text-amber-700' },
-  academician: { label: 'Academician', chip: 'bg-emerald-50 text-emerald-700' },
-  institution: { label: 'Institution', chip: 'bg-sky-50 text-sky-700' },
+  student: { label: 'Student' },
+  industry: { label: 'Industry' },
+  academician: { label: 'Academician' },
+  institution: { label: 'Institution' },
 }
 
 const CARDS = [
@@ -36,10 +38,15 @@ const CARDS = [
   },
 ]
 
-/** Simple post-login home. Real content plugs in here later. */
-export default function Dashboard({ user, role }) {
-  const meta = ROLE_META[role] ?? { label: role, chip: 'bg-gray-100 text-gray-700' }
+/** /dashboard — post-login home. Mounted only via ProtectedRoute (status 'ready'). */
+export default function Dashboard() {
+  const { session, profile } = useAuth()
+  const user = session?.user
+  const role = profile?.role
+
+  const roleLabel = ROLE_META[role]?.label ?? role
   const name =
+    profile?.full_name ||
     user?.user_metadata?.full_name ||
     user?.user_metadata?.name ||
     user?.email?.split('@')[0] ||
@@ -76,6 +83,12 @@ export default function Dashboard({ user, role }) {
                 {initial}
               </span>
             )}
+            <Link
+              to="/profile"
+              className="hidden h-9 items-center rounded-full px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-100 sm:flex"
+            >
+              My Profile
+            </Link>
             <button
               onClick={signOut}
               className="h-9 rounded-full border border-gray-300 px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
@@ -97,9 +110,9 @@ export default function Dashboard({ user, role }) {
             }}
           />
           <div className="relative">
-            <span className={`inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold backdrop-blur`}>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold backdrop-blur">
               <SparklesIcon className="h-3.5 w-3.5" />
-              {meta.label}
+              {roleLabel}
             </span>
             <h1 className="mt-4 text-2xl font-extrabold tracking-tight sm:text-4xl">
               Welcome back, {name} 👋

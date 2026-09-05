@@ -1,13 +1,26 @@
--- EduBridge · profiles table
--- Run once in the Supabase dashboard → SQL Editor.
--- Stores the role chosen at signup / on the "Complete Setup" screen.
+-- ═══════════════════════════════════════════════════════════════════════
+-- EduBridge · profiles table (with academic details)
+-- ═══════════════════════════════════════════════════════════════════════
 
+-- ── 1) NEW COLUMNS — run this block if the table already exists ─────────
+alter table public.profiles add column if not exists class_year  text;
+alter table public.profiles add column if not exists course      text;
+alter table public.profiles add column if not exists stream      text;
+alter table public.profiles add column if not exists institution text;
+alter table public.profiles add column if not exists full_name   text;
+
+-- ── 2) FRESH SETUP — full table definition (for reference / new projects)
 create table if not exists public.profiles (
-  id         uuid primary key references auth.users (id) on delete cascade,
-  email      text,
-  role       text check (role in ('student', 'industry', 'academician', 'institution')),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  id          uuid primary key references auth.users (id) on delete cascade,
+  email       text,
+  full_name   text,
+  class_year  text,
+  course      text,
+  stream      text,
+  institution text,
+  role        text check (role in ('student', 'industry', 'academician', 'institution')),
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
 );
 
 alter table public.profiles enable row level security;

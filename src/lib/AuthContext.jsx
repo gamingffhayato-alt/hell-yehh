@@ -56,8 +56,9 @@ export function AuthProvider({ children }) {
            never re-run routing so the user isn't yanked mid-session. */
         if (event !== 'SIGNED_IN' && event !== 'INITIAL_SESSION') return
 
-        /* ---------------------------- Signed in ------------------------------ */
+        /* ---------------------------- Signed in ------------------------------- */
         setStatus('loading')
+
         const { data: prof, error } = await supabase
           .from('profiles')
           .select('*')
@@ -66,20 +67,48 @@ export function AuthProvider({ children }) {
 
         if (error) console.error('profiles query failed:', error.message)
 
-        const complete = isProfileComplete(prof)
-        setProfile(prof)
+        let resolvedProfile = prof
+        let justOnboarded = false
+
+        /* Email sign-up users carry their registration details in auth
+           metadata (source: 'email_signup'). If the profiles row doesn't exist
+           yet (e.g. first login after email confirmation — inserts are blocked
+           pre-session by RLS), materialize it here as soon as a session exists. */
+        const md = nextSession.user.user_metadata || {}
+        if (!resolvedProfile && md?.source === 'email_signup') {
+          const record = {
+            id: nextSession.user.id,
+            email: nextSession.user.email,
+            full_name: md.full_name ?? null,
+            class_year: md.class_year ?? null,
+            course: md.course ?? null,
+            stream: md.stream ?? null,
+            institution: md.institution ?? null,
+            role: 'student',
+          }
+          const { error: upsertError } = await supabase
+            .from('profiles')
+            .upsert([record])
+          if (upsertError) {
+            console.error('profile creation from signup metadata failed:', upsertError.message)
+          } else {
+            resolvedProfile = record
+            justOnboarded = true
+          }
+        }
+
+        const complete = isProfileComplete(resolvedProfile)
+        setProfile(resolvedProfile)
 
         if (event === 'SIGNED_IN') {
-          /* A fresh sign-in (e.g. Google OAuth bounce). Enforce Login vs
-             Sign-Up intent, which was stashed before leaving for Google. */
+          /* A fresh sign-in. Enforce Login vs Sign-Up intent (Google flow stashes
+             it in sessionStorage before the OAuth redirect). */
           const intent = sessionStorage.getItem('auth_intent')
           sessionStorage.removeItem('auth_intent')
 
           if (intent === 'login' && !complete) {
             // Brand-new user tried to LOG IN → block and force sign-out so they
             // can never slip through as an unregistered logged-in user.
-            // (Profiles-table check is used rather than user.created_at, which
-            // is unreliable — a new user could also legitimately re-login soon.)
             await supabase.auth.signOut()
             setProfile(null)
             setStatus('signedOut')
@@ -94,11 +123,12 @@ export function AuthProvider({ children }) {
           }
 
           if (complete) {
-            // Returning user → straight to the dashboard.
             setStatus('ready')
-            navigate('/dashboard', { replace: true })
+            // A just-created email account goes to its profile; returning
+            // logins go to the dashboard.
+            navigate(justOnboarded ? '/profile' : '/dashboard', { replace: true })
           } else {
-            // First-time sign-up → finish onboarding on /details.
+            // First-time sign-up (Google) → finish onboarding on /details.
             setStatus('needsOnboarding')
             navigate('/details', { replace: true })
           }
