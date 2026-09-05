@@ -77,7 +77,7 @@ export function SiteFooter() {
               <span className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-600 text-white">
                 <GradCapIcon className="h-5 w-5" />
               </span>
-              <span className="text-lg font-extrabold tracking-tight text-white">EduBridge</span>
+              <span className="text-lg font-extrabold tracking-tight text-white">Intern X</span>
             </a>
             <p className="mt-4 max-w-xs text-sm leading-relaxed">
               The bridge between campuses and careers — jobs, internships and
@@ -105,7 +105,7 @@ export function SiteFooter() {
         </div>
 
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 text-xs sm:flex-row">
-          <p>© 2026 EduBridge. Crafted with care in India.</p>
+          <p>© 2026 Intern X. Crafted with care in India.</p>
           <div className="flex gap-6">
             <a href="#" className="transition hover:text-white">Privacy</a>
             <a href="#" className="transition hover:text-white">Terms</a>

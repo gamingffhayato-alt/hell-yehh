@@ -76,13 +76,13 @@ export default function AuthPage() {
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-600 text-white">
             <GradCapIcon className="h-5 w-5" />
           </span>
-          <span className="text-lg font-semibold tracking-tight text-gray-900">EduBridge</span>
+          <span className="text-lg font-semibold tracking-tight text-gray-900">Intern X</span>
         </div>
 
         {/* Login card — Email + Password + Log In only */}
         <div className="rounded-2xl bg-white p-6 shadow-xl ring-1 ring-gray-900/5 sm:p-8">
           <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Welcome back</h1>
-          <p className="mt-1.5 text-sm text-gray-500">Log in to your EduBridge account.</p>
+          <p className="mt-1.5 text-sm text-gray-500">Log in to your Intern X account.</p>
 
           {shownError && (
             <div
@@ -142,7 +142,7 @@ export default function AuthPage() {
 
         {/* Create account → opens the registration modal */}
         <p className="mt-6 text-center text-sm text-gray-500">
-          New to EduBridge?{' '}
+          New to Intern X?{' '}
           <button
             onClick={() => setSignupOpen(true)}
             className="font-semibold text-indigo-600 transition hover:text-indigo-500 hover:underline"

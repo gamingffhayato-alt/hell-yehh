@@ -46,7 +46,7 @@ export default function SkillGapCard({ notify }) {
             </p>
             <p className="text-sm font-semibold text-gray-900">Cloud Infrastructure Basics</p>
             <p className="mt-0.5 text-xs text-gray-500">
-              EduBridge Learning · 4 weeks · Beginner-friendly · 4 modules
+              Intern X Learning · 4 weeks · Beginner-friendly · 4 modules
             </p>
           </div>
         </div>

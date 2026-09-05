@@ -60,7 +60,7 @@ export default function DetailsPage() {
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-600 text-white">
             <GradCapIcon className="h-5 w-5" />
           </span>
-          <span className="text-lg font-semibold tracking-tight text-gray-900">EduBridge</span>
+          <span className="text-lg font-semibold tracking-tight text-gray-900">Intern X</span>
         </div>
 
         <div className="rounded-2xl bg-white p-6 shadow-xl ring-1 ring-gray-900/5 sm:p-8">

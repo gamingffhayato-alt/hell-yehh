@@ -185,7 +185,7 @@ export function FeaturedJobs() {
 const STEPS = [
   {
     n: '01', Icon: UsersIcon, title: 'Build your profile',
-    text: 'Add your skills, projects and coursework once. Your EduBridge profile doubles as a living résumé.',
+    text: 'Add your skills, projects and coursework once. Your Intern X profile doubles as a living résumé.',
   },
   {
     n: '02', Icon: SparklesIcon, title: 'Get matched, not lost',
@@ -256,7 +256,7 @@ export function RoleBento() {
     <section id="why" className="scroll-mt-20 bg-gray-50 py-16 sm:py-20">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <SectionHeading
-          eyebrow="Why EduBridge"
+          eyebrow="Why Intern X"
           title="Built for every side of campus"
           sub="One platform where the whole ecosystem — classrooms and boardrooms alike — finally meets."
         />
@@ -285,7 +285,7 @@ export function RoleBento() {
 
 const QUOTES = [
   {
-    quote: 'I applied to 12 internships through EduBridge and got 4 interview calls in my first week. The skill-match score was scary accurate.',
+    quote: 'I applied to 12 internships through Intern X and got 4 interview calls in my first week. The skill-match score was scary accurate.',
     name: 'Ananya Sharma', role: 'Design student · NIFT Delhi', initials: 'AS', tile: 'bg-rose-400',
   },
   {

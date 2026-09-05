@@ -14,7 +14,7 @@ const INITIAL_PROJECTS = [
     title: 'JARVIS — Telegram Educational Bot',
     desc: 'AI study assistant that answers DSA and aptitude questions on Telegram. 200+ queries served in its first week.',
     tags: ['xAI Grok API', 'Render', 'Python', 'Telegram Bot API'],
-    live: 'https://t.me/',
+    live: 'https://t.me/jarvis01educationbot',
     code: 'https://github.com/',
     featured: true,
   },
@@ -156,7 +156,7 @@ export default function Portfolio({ notify }) {
               <a
                 href={p.live}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-gray-700"
               >
                 <ExternalIcon className="h-3.5 w-3.5" />
@@ -165,7 +165,7 @@ export default function Portfolio({ notify }) {
               <a
                 href={p.code}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-center text-xs font-semibold text-gray-700 transition hover:bg-gray-50"
               >
                 Source Code

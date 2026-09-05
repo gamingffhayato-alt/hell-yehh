@@ -134,12 +134,12 @@ export default function ProfilePage() {
       {/* Top bar */}
       <header className="sticky top-0 z-40 border-b border-gray-100 bg-white/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-          <span className="flex items-center gap-2.5">
+          <Link to="/" className="flex items-center gap-2.5">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-600 text-white">
               <GradCapIcon className="h-5 w-5" />
             </span>
-            <span className="text-lg font-extrabold tracking-tight text-gray-900">EduBridge</span>
-          </span>
+            <span className="text-lg font-extrabold tracking-tight text-gray-900">Intern X</span>
+          </Link>
           <div className="flex items-center gap-2">
             <Link
               to="/dashboard"
@@ -217,7 +217,7 @@ export default function ProfilePage() {
               <form onSubmit={handleSave} className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 sm:p-8">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-semibold text-gray-900">Edit profile</h2>
-                  <span className="text-xs text-gray-400">Changes save to your EduBridge profile</span>
+                  <span className="text-xs text-gray-400">Changes save to your Intern X profile</span>
                 </div>
 
                 <div className="mt-6 grid gap-5 sm:grid-cols-2">

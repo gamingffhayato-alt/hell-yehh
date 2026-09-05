@@ -116,7 +116,7 @@ export function AuthProvider({ children }) {
               replace: true,
               state: {
                 error:
-                  'Please sign up first — no EduBridge account exists for this Google user.',
+                  'Please sign up first — no Intern X account exists for this Google user.',
               },
             })
             return

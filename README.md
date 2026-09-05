@@ -1,4 +1,4 @@
-# EduBridge — Login / Sign-Up UI
+# Intern X — Login / Sign-Up UI
 
 A modern, mobile-responsive authentication screen built with **React + Tailwind CSS (v4)**.
 
@@ -33,5 +33,5 @@ npm run dev        # → http://localhost:5173
 
 1. Copy the `src/components/` folder into your project.
 2. Make sure Tailwind is configured, then render `<AuthPage />` anywhere.
-3. Branding is plain Tailwind classes (`indigo-*`, name "EduBridge", logo in
+3. Branding is plain Tailwind classes (`indigo-*`, name "Intern X", logo in
    `BrandPanel`) — search & replace to re-theme.

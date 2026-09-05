@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════
--- EduBridge · profiles table (with academic details)
+-- Intern X · profiles table (with academic details)
 -- ═══════════════════════════════════════════════════════════════════════
 
 -- ── 1) NEW COLUMNS — run this block if the table already exists ─────────

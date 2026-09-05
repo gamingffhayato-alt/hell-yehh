@@ -179,7 +179,7 @@ export default function Hero() {
           </h1>
 
           <p className="mt-5 max-w-lg text-base leading-relaxed text-gray-600 sm:text-lg">
-            EduBridge brings jobs, internships and courses for students and
+            Intern X brings jobs, internships and courses for students and
             freshers into one place — matched to your skills, not spammed to
             your inbox.
           </p>

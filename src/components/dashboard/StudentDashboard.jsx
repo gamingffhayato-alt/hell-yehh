@@ -193,12 +193,12 @@ export default function StudentDashboard() {
       <header className="sticky top-0 z-40 border-b border-gray-100 bg-white/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6">
           {/* Logo */}
-          <Link to="/dashboard" className="flex shrink-0 items-center gap-2.5">
+          <Link to="/" className="flex shrink-0 items-center gap-2.5">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-600 text-white">
               <GradCapIcon className="h-5 w-5" />
             </span>
             <span className="hidden text-lg font-extrabold tracking-tight text-gray-900 sm:block">
-              EduBridge
+              Intern X
             </span>
           </Link>
 

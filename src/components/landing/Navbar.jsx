@@ -1,11 +1,12 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { GradCapIcon, MenuIcon, XIcon } from '../Icons'
 
 const LINKS = [
   { label: 'Explore', href: '#categories' },
   { label: 'Jobs', href: '#jobs' },
   { label: 'How it works', href: '#how' },
-  { label: 'Why EduBridge', href: '#why' },
+  { label: 'Why Intern X', href: '#why' },
 ]
 
 export default function Navbar({ onLogin, onRegister }) {
@@ -16,12 +17,13 @@ export default function Navbar({ onLogin, onRegister }) {
     <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/90 backdrop-blur">
       <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         {/* Brand */}
-        <a href="#" className="flex items-center gap-2.5" onClick={close}>
+        {/* Brand — always routes back to the landing page */}
+        <Link to="/" className="flex items-center gap-2.5" onClick={close}>
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-600 text-white">
             <GradCapIcon className="h-5 w-5" />
           </span>
-          <span className="text-lg font-extrabold tracking-tight text-gray-900">EduBridge</span>
-        </a>
+          <span className="text-lg font-extrabold tracking-tight text-gray-900">Intern X</span>
+        </Link>
 
         {/* Center links (desktop) */}
         <div className="hidden items-center gap-8 lg:flex">
