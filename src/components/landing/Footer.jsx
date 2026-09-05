@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { ArrowRightIcon, GradCapIcon } from '../Icons'
 
 /** Shared styling for un-built destinations: visibly disabled, dims on hover. */
@@ -57,9 +58,9 @@ export function CtaBanner({ onRegister, onComingSoon }) {
 
 /**
  * Every footer link does something real:
- *   { href: '#jobs' }  → smooth-scrolls to a live section
- *   { register: true } → opens the multi-step sign-up wizard
- *   {}                 → page not built yet → coming-soon toast
+ *   { href: '#jobs' }          → smooth-scrolls to a live section
+ *   { to: '/signup?role=…' }   → routes into the sign-up wizard (role pre-selected)
+ *   {}                         → page not built yet → coming-soon toast
  */
 const FOOTER_COLS = [
   {
@@ -74,7 +75,7 @@ const FOOTER_COLS = [
   {
     heading: 'Employers',
     links: [
-      { label: 'Post a job', register: true },
+      { label: 'Post a job', to: '/signup?role=industry' },
       { label: 'Campus hiring' },
       { label: 'Pricing' },
       { label: 'Success stories', href: '#stories' },
@@ -91,7 +92,7 @@ const FOOTER_COLS = [
   },
 ]
 
-function FooterLink({ link, onRegister, onComingSoon }) {
+function FooterLink({ link, onComingSoon }) {
   if (link.href) {
     return (
       <a href={link.href} className="text-sm transition hover:text-white">
@@ -99,11 +100,11 @@ function FooterLink({ link, onRegister, onComingSoon }) {
       </a>
     )
   }
-  if (link.register) {
+  if (link.to) {
     return (
-      <button onClick={onRegister} className="text-sm transition hover:text-white">
+      <Link to={link.to} className="text-sm transition hover:text-white">
         {link.label}
-      </button>
+      </Link>
     )
   }
   return (
@@ -113,7 +114,7 @@ function FooterLink({ link, onRegister, onComingSoon }) {
   )
 }
 
-export function SiteFooter({ onRegister, onComingSoon }) {
+export function SiteFooter({ onComingSoon }) {
   const scrollTop = () => window.scrollTo({ top: 0, behavior: 'smooth' })
 
   return (
@@ -143,7 +144,7 @@ export function SiteFooter({ onRegister, onComingSoon }) {
               <ul className="mt-4 space-y-2.5">
                 {col.links.map((link) => (
                   <li key={link.label}>
-                    <FooterLink link={link} onRegister={onRegister} onComingSoon={onComingSoon} />
+                    <FooterLink link={link} onComingSoon={onComingSoon} />
                   </li>
                 ))}
               </ul>
@@ -153,12 +154,19 @@ export function SiteFooter({ onRegister, onComingSoon }) {
 
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 text-xs sm:flex-row">
           <p>© 2026 Intern X. Crafted with care in India.</p>
-          <div className="flex gap-6">
+          <div className="flex items-center gap-6">
             {['Privacy', 'Terms', 'Cookies'].map((label) => (
               <button key={label} onClick={onComingSoon} className={`transition ${SOON_CLASS}`}>
                 {label}
               </button>
             ))}
+            {/* Discreet back door to the admin area (separate from user auth) */}
+            <Link
+              to="/admin-login"
+              className="text-gray-600 opacity-50 transition hover:text-white hover:opacity-100"
+            >
+              Admin
+            </Link>
           </div>
         </div>
       </div>

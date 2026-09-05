@@ -120,6 +120,34 @@ export function AuthProvider({ children }) {
           }
         }
 
+        /* Google sign-up with a pre-picked role: the sign-up wizard stashes
+           sessionStorage 'oauth_role' before the OAuth redirect (redirectTo
+           is /dashboard). Materialize the profile here so the user's role is
+           saved on the very first session and routing skips /details. */
+        if (!resolvedProfile && event === 'SIGNED_IN') {
+          const oauthRole = sessionStorage.getItem('oauth_role')
+          if (
+            sessionStorage.getItem('auth_intent') !== 'login' &&
+            ['student', 'industry', 'academician'].includes(oauthRole)
+          ) {
+            const record = {
+              id: nextSession.user.id,
+              email: nextSession.user.email,
+              full_name: md.full_name ?? md.name ?? null,
+              role: oauthRole,
+            }
+            const { error: upsertError } = await supabase
+              .from('profiles')
+              .upsert([record])
+            if (upsertError) {
+              console.error('OAuth role profile creation failed:', upsertError.message)
+            } else {
+              resolvedProfile = record
+            }
+          }
+        }
+        sessionStorage.removeItem('oauth_role')
+
         const complete = isProfileComplete(resolvedProfile)
         setProfile(resolvedProfile)
 

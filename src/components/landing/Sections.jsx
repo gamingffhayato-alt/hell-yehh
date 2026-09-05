@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import {
   ArrowRightIcon,
   BanknotesIcon,
@@ -347,17 +348,17 @@ const ROLES = [
   {
     Icon: GradCapIcon, tint: 'bg-indigo-50', tile: 'bg-indigo-600',
     title: 'Students', text: 'Internships, fresher jobs and courses matched to your coursework and skills.',
-    cta: 'Join as a student', soon: false,
+    cta: 'Join as a student', to: '/signup?role=student', soon: false,
   },
   {
     Icon: BriefcaseIcon, tint: 'bg-amber-50', tile: 'bg-amber-500',
     title: 'Industry', text: 'Post openings, run campus drives and hire pre-screened fresh talent faster.',
-    cta: 'Hire fresh talent', soon: false,
+    cta: 'Hire fresh talent', to: '/signup?role=industry', soon: false,
   },
   {
     Icon: BookIcon, tint: 'bg-emerald-50', tile: 'bg-emerald-500',
     title: 'Academicians', text: 'Mentor candidates, publish courses and shape industry-ready curricula.',
-    cta: 'Start mentoring', soon: false,
+    cta: 'Start mentoring', to: '/signup?role=academician', soon: false,
   },
   {
     Icon: BuildingIcon, tint: 'bg-sky-50', tile: 'bg-sky-500',
@@ -366,7 +367,7 @@ const ROLES = [
   },
 ]
 
-export function RoleBento({ onRegister, onComingSoon }) {
+export function RoleBento({ onComingSoon }) {
   return (
     <section id="why" className="scroll-mt-20 bg-gray-50 py-16 sm:py-20">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
@@ -377,7 +378,7 @@ export function RoleBento({ onRegister, onComingSoon }) {
         />
 
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {ROLES.map(({ Icon, tint, tile, title, text, cta, soon }) => (
+          {ROLES.map(({ Icon, tint, tile, title, text, cta, to, soon }) => (
             <div key={title} className={`group flex flex-col rounded-2xl ${tint} p-6 transition duration-150 hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-100`}>
               <div className="flex items-start justify-between">
                 <span className={`grid h-11 w-11 place-items-center rounded-xl text-white ${tile}`}>
@@ -393,7 +394,7 @@ export function RoleBento({ onRegister, onComingSoon }) {
               <p className="mt-1.5 flex-1 text-sm leading-relaxed text-gray-600">{text}</p>
 
               {soon ? (
-                /* Academician & Institution portals aren't built yet —
+                /* Institution portal isn't built yet —
                    degrade gracefully: disabled look + coming-soon toast. */
                 <button
                   onClick={onComingSoon}
@@ -403,13 +404,15 @@ export function RoleBento({ onRegister, onComingSoon }) {
                   <ArrowRightIcon className="h-4 w-4" />
                 </button>
               ) : (
-                <button
-                  onClick={onRegister}
+                /* Deep-link into the sign-up wizard with the role pre-selected
+                   (query param survives the /signup → /login redirect). */
+                <Link
+                  to={to}
                   className="mt-4 flex items-center gap-1.5 self-start text-sm font-semibold text-indigo-600 transition hover:text-indigo-500"
                 >
                   {cta}
                   <ArrowRightIcon className="h-4 w-4 transition group-hover:translate-x-0.5" />
-                </button>
+                </Link>
               )}
             </div>
           ))}

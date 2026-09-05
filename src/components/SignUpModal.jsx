@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import PasswordInput from './PasswordInput'
 import GoogleButton from './GoogleButton'
@@ -95,10 +96,19 @@ function BackButton({ onClick }) {
  * academician → /academic-dashboard).
  */
 export default function SignUpModal({ onClose }) {
-  const [step, setStep] = useState(1)
+  // Deep-links like /signup?role=industry (from the landing role cards) arrive
+  // here as /login?role=industry — on mount, pre-select that role and
+  // auto-advance the wizard straight to Step 2 (Conditional Details), so the
+  // user never has to click the card they already picked.
+  const [searchParams] = useSearchParams()
+  const urlRole = ['student', 'industry', 'academician'].includes(searchParams.get('role'))
+    ? searchParams.get('role')
+    : null
+
+  const [step, setStep] = useState(urlRole ? 2 : 1)
 
   // Step 1 — profiling
-  const [role, setRole] = useState('') // 'student' | 'industry' | 'academician'
+  const [role, setRole] = useState(urlRole ?? '') // 'student' | 'industry' | 'academician'
   const [marketingSource, setMarketingSource] = useState('')
 
   // Step 2 — shared + conditional
@@ -158,14 +168,16 @@ export default function SignUpModal({ onClose }) {
     setStep((s) => Math.max(1, s - 1))
   }
 
-  /** Google OAuth from the SIGN-UP modal — records a 'signup' intent so new
-      Google users are welcomed and routed to the /details onboarding. */
+  /** Google OAuth from the SIGN-UP modal — records a 'signup' intent plus the
+      chosen role (if any) so AuthContext can materialize the profile after the
+      OAuth redirect and route straight into the right portal. */
   const handleGoogleSignUp = async () => {
     sessionStorage.setItem('auth_intent', 'signup')
+    if (role) sessionStorage.setItem('oauth_role', role)
     onClose()
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/login` },
+      options: { redirectTo: `${window.location.origin}/dashboard` },
     })
     if (error) console.error('Google sign-up error:', error.message)
   }

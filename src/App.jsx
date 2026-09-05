@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider, FullScreenLoader, homeForRole, useAuth } from './lib/AuthContext'
 import LandingPage from './components/landing/LandingPage'
 import AuthPage from './components/AuthPage'
@@ -10,6 +10,13 @@ import AcademicDashboard from './components/academic/AcademicDashboard'
 import AdminLogin from './components/admin/AdminLogin'
 import AdminDashboard from './components/admin/AdminDashboard'
 import AskAiWidgetGate from './components/AskAiWidget'
+
+/** /signup?role=x folds into /login?role=x and auto-opens the sign-up modal —
+    the query string must survive so the wizard can pre-select the role. */
+function SignupRedirect() {
+  const { search } = useLocation()
+  return <Navigate to={`/login${search}`} replace state={{ openSignup: true }} />
+}
 
 /** Signed-in-only routes. Incomplete profiles are always pushed to /details. */
 function ProtectedRoute({ children }) {
@@ -49,8 +56,9 @@ export default function App() {
               Guards itself via the ix_admin sessionStorage flag. */}
           <Route path="/admin-login" element={<AdminLogin />} />
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
-          {/* Old sign-up route now folds into the login page's sign-up modal */}
-          <Route path="/signup" element={<Navigate to="/login" replace state={{ openSignup: true }} />} />
+          {/* Old sign-up route folds into the login page's sign-up modal,
+              preserving ?role=… deep-links from the landing role cards. */}
+          <Route path="/signup" element={<SignupRedirect />} />
           <Route path="/details" element={<OnboardingRoute><DetailsPage /></OnboardingRoute>} />
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

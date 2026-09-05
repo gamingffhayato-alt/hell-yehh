@@ -63,11 +63,11 @@ export default function LandingPage() {
           onComingSoon={pageSoon}
         />
         <HowItWorks />
-        <RoleBento onRegister={goSignup} onComingSoon={portalSoon} />
+        <RoleBento onComingSoon={portalSoon} />
         <Testimonials />
         <CtaBanner onRegister={goSignup} onComingSoon={portalSoon} />
       </main>
-      <SiteFooter onRegister={goSignup} onComingSoon={pageSoon} />
+      <SiteFooter onComingSoon={pageSoon} />
       <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
   )

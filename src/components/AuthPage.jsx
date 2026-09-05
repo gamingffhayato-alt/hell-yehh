@@ -25,12 +25,14 @@ export default function AuthPage() {
   const [signupOpen, setSignupOpen] = useState(Boolean(location.state?.openSignup))
 
   /** Google OAuth from the LOGIN card — records a 'login' intent so a
-      brand-new Google user gets the "Please sign up first" guard. */
+      brand-new Google user gets the "Please sign up first" guard. Lands on
+      /dashboard; AuthContext does the actual routing (or bounces new users
+      back here with the guard banner). */
   const handleGoogleLogin = async () => {
     sessionStorage.setItem('auth_intent', 'login')
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/login` },
+      options: { redirectTo: `${window.location.origin}/dashboard` },
     })
     if (error) console.error('Google sign-in error:', error.message)
   }
