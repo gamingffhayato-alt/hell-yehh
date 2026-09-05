@@ -30,6 +30,11 @@ const isProfileComplete = (profile) => Boolean(profile?.role)
  *   'signedOut'       – no session
  *   'needsOnboarding' – signed in, but no completed profile (must see /details)
  *   'ready'           – signed in + completed profile (allowed in app)
+ *
+ * PERSISTENCE: status starts as 'loading' on every mount. The provider only
+ * renders decisions AFTER supabase (persistSession) replays the stored
+ * session and fires INITIAL_SESSION/SIGNED_IN — so protected routes never
+ * flash-redirect to /login on a refresh while the stored session exists.
  */
 export function AuthProvider({ children }) {
   const navigate = useNavigate()
@@ -59,15 +64,22 @@ export function AuthProvider({ children }) {
         /* ---------------------------- Signed in ------------------------------- */
         setStatus('loading')
 
-        const { data: prof, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', nextSession.user.id)
-          .maybeSingle()
+        let resolvedProfile = null
+        try {
+          const { data: prof, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', nextSession.user.id)
+            .maybeSingle()
+          if (error) console.error('profiles query failed:', error.message)
+          resolvedProfile = prof
+        } catch (e) {
+          // Network hiccup on refresh → never leave the app stuck on "loading".
+          console.error('profiles query crashed:', e)
+          setStatus('signedOut')
+          return
+        }
 
-        if (error) console.error('profiles query failed:', error.message)
-
-        let resolvedProfile = prof
         let justOnboarded = false
 
         /* Email sign-up users carry their registration details in auth

@@ -299,6 +299,13 @@ export default function StudentDashboard() {
                     >
                       Dashboard
                     </Link>
+                    <Link
+                      to="/industry-dashboard"
+                      onClick={() => setMenuOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-sm text-gray-700 transition hover:bg-gray-50"
+                    >
+                      Industry view (demo)
+                    </Link>
                     <button
                       onClick={() => supabase.auth.signOut()}
                       className="block w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-rose-600 transition hover:bg-rose-50"

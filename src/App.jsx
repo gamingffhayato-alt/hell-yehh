@@ -5,6 +5,7 @@ import AuthPage from './components/AuthPage'
 import DetailsPage from './components/DetailsPage'
 import ProfilePage from './components/ProfilePage'
 import Dashboard from './components/Dashboard'
+import IndustryDashboard from './components/industry/IndustryDashboard'
 
 /** Signed-in-only routes. Incomplete profiles are always pushed to /details. */
 function ProtectedRoute({ children }) {
@@ -45,6 +46,7 @@ export default function App() {
           <Route path="/details" element={<OnboardingRoute><DetailsPage /></OnboardingRoute>} />
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/industry-dashboard" element={<ProtectedRoute><IndustryDashboard /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
