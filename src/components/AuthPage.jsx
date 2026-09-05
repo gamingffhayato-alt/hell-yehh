@@ -3,6 +3,8 @@ import { Link, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import PasswordInput from './PasswordInput'
 import SignUpModal from './SignUpModal'
+import GoogleButton from './GoogleButton'
+import Divider from './Divider'
 import { GradCapIcon, MailIcon } from './Icons'
 
 /**
@@ -21,6 +23,17 @@ export default function AuthPage() {
   // optional auto-open of the sign-up modal (from the landing CTAs).
   const routeError = location.state?.error
   const [signupOpen, setSignupOpen] = useState(Boolean(location.state?.openSignup))
+
+  /** Google OAuth from the LOGIN card — records a 'login' intent so a
+      brand-new Google user gets the "Please sign up first" guard. */
+  const handleGoogleLogin = async () => {
+    sessionStorage.setItem('auth_intent', 'login')
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/login` },
+    })
+    if (error) console.error('Google sign-in error:', error.message)
+  }
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -81,7 +94,12 @@ export default function AuthPage() {
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="mt-6 space-y-4">
+          <div className="mt-6">
+            <GoogleButton onClick={handleGoogleLogin} />
+          </div>
+          <Divider>or continue with email</Divider>
+
+          <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-gray-700">
                 Email address

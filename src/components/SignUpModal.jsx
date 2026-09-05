@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import PasswordInput from './PasswordInput'
+import GoogleButton from './GoogleButton'
+import Divider from './Divider'
 import { CheckIcon, GradCapIcon, XIcon } from './Icons'
 
 const CLASS_YEARS = ['1st Year', '2nd Year', '3rd Year', '4th Year']
@@ -56,6 +58,18 @@ export default function SignUpModal({ onClose }) {
       window.removeEventListener('keydown', onKey)
     }
   }, [onClose])
+
+  /** Google OAuth from the SIGN-UP modal — records a 'signup' intent so new
+      Google users are welcomed and routed to the /details onboarding. */
+  const handleGoogleSignUp = async () => {
+    sessionStorage.setItem('auth_intent', 'signup')
+    onClose()
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/login` },
+    })
+    if (error) console.error('Google sign-up error:', error.message)
+  }
 
   const handleSignUp = async (e) => {
     e.preventDefault()
@@ -155,6 +169,9 @@ export default function SignUpModal({ onClose }) {
           ) : (
             /* ------------------------------ Form ------------------------------ */
             <form onSubmit={handleSignUp} className="mt-7 space-y-5">
+              <GoogleButton onClick={handleGoogleSignUp} />
+              <Divider>or sign up with email</Divider>
+
               <div className="grid gap-5 sm:grid-cols-2">
                 {/* Full name */}
                 <div>
