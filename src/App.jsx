@@ -6,6 +6,8 @@ import DetailsPage from './components/DetailsPage'
 import ProfilePage from './components/ProfilePage'
 import Dashboard from './components/Dashboard'
 import IndustryDashboard from './components/industry/IndustryDashboard'
+import AcademicDashboard from './components/academic/AcademicDashboard'
+import AskAiWidgetGate from './components/AskAiWidget'
 
 /** Signed-in-only routes. Incomplete profiles are always pushed to /details. */
 function ProtectedRoute({ children }) {
@@ -47,8 +49,12 @@ export default function App() {
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/industry-dashboard" element={<ProtectedRoute><IndustryDashboard /></ProtectedRoute>} />
+          <Route path="/academic-dashboard" element={<ProtectedRoute><AcademicDashboard /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        {/* Floating "Ask AI" assistant — gates itself to dashboard routes
+            and picks its persona from the logged-in role. */}
+        <AskAiWidgetGate />
       </AuthProvider>
     </BrowserRouter>
   )

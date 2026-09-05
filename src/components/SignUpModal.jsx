@@ -5,6 +5,7 @@ import GoogleButton from './GoogleButton'
 import Divider from './Divider'
 import {
   ArrowRightIcon,
+  BookIcon,
   BriefcaseIcon,
   CheckIcon,
   GradCapIcon,
@@ -24,7 +25,7 @@ const STREAMS = [
   'Artificial Intelligence & ML',
 ]
 
-/** Step 1 · "Who are you?" — the two portals of Intern X. */
+/** Step 1 · "Who are you?" — the three live portals of Intern X. */
 const ROLE_CARDS = [
   {
     id: 'student',
@@ -37,6 +38,13 @@ const ROLE_CARDS = [
     label: 'Industry Partner',
     hint: 'Post roles, get ATS-ranked matches & host hackathons',
     Icon: BriefcaseIcon,
+  },
+  {
+    id: 'academician',
+    label: 'Academician',
+    hint: 'FDPs, industry consultancy R&D & cohort analytics',
+    Icon: BookIcon,
+    wide: true, // third card spans the full row
   },
 ]
 
@@ -73,23 +81,24 @@ function BackButton({ onClick }) {
 /**
  * Full registration modal (Supabase signUp) — a 3-step wizard:
  *
- *   Step 1 · Initial profiling — "Who are you?" (Student / Industry Partner
- *            cards) + "How did you hear about Intern X?" (marketing source).
+ *   Step 1 · Initial profiling — "Who are you?" (Student / Industry Partner /
+ *            Academician cards) + "How did you hear about Intern X?".
  *   Step 2 · Conditional details — students get academic fields (institution
- *            defaults to Quantum University); industry partners get company
- *            name + job title instead.
+ *            defaults to Quantum University); industry partners get company +
+ *            job title; academicians get designation, department, institution.
  *   Step 3 · Account creation — email + password → "Complete Sign Up".
  *
  * Everything travels in signup metadata; AuthContext writes it into the
  * profiles table (incl. role, marketing_source, company_name, job_title) as
- * soon as a session exists, then routes students → /dashboard and industry
- * partners → /industry-dashboard.
+ * soon as a session exists, then routes each role to its own dashboard
+ * (student → /dashboard, industry → /industry-dashboard,
+ * academician → /academic-dashboard).
  */
 export default function SignUpModal({ onClose }) {
   const [step, setStep] = useState(1)
 
   // Step 1 — profiling
-  const [role, setRole] = useState('') // 'student' | 'industry'
+  const [role, setRole] = useState('') // 'student' | 'industry' | 'academician'
   const [marketingSource, setMarketingSource] = useState('')
 
   // Step 2 — shared + conditional
@@ -100,6 +109,8 @@ export default function SignUpModal({ onClose }) {
   const [institution, setInstitution] = useState('Quantum University') // default suggestion
   const [companyName, setCompanyName] = useState('')
   const [jobTitle, setJobTitle] = useState('')
+  const [designation, setDesignation] = useState('')
+  const [department, setDepartment] = useState('')
 
   // Step 3 — credentials
   const [email, setEmail] = useState('')
@@ -110,6 +121,8 @@ export default function SignUpModal({ onClose }) {
   const [confirmSent, setConfirmSent] = useState(false)
 
   const isStudent = role === 'student'
+  const isIndustry = role === 'industry'
+  const isAcademician = role === 'academician'
 
   // Lock page scroll + close on Escape while the modal is open
   useEffect(() => {
@@ -128,7 +141,11 @@ export default function SignUpModal({ onClose }) {
     ? Boolean(
         fullName.trim() && classYear && course.trim() && stream.trim() && institution.trim(),
       )
-    : Boolean(fullName.trim() && companyName.trim() && jobTitle.trim())
+    : isIndustry
+      ? Boolean(fullName.trim() && companyName.trim() && jobTitle.trim())
+      : Boolean(
+          fullName.trim() && designation.trim() && department.trim() && institution.trim(),
+        )
   const canSubmit = Boolean(email.trim() && password.length >= 8)
 
   const goNext = () => {
@@ -175,17 +192,23 @@ export default function SignUpModal({ onClose }) {
       options: {
         data: {
           source: 'email_signup', // marker AuthContext uses to build the profile
-          role, // 'student' | 'industry' → drives the post-login redirect
+          role, // 'student' | 'industry' | 'academician' → drives the redirect
           marketing_source: marketingSource,
           full_name: fullName.trim(),
-          // Academic details (students only — null for industry partners)
+          // Academic details (students only — null otherwise)
           class_year: isStudent ? classYear : null,
           course: isStudent ? course.trim() : null,
           stream: isStudent ? stream.trim() : null,
-          institution: isStudent ? institution.trim() : null,
-          // Industry partner details (null for students)
-          company_name: isStudent ? null : companyName.trim(),
-          job_title: isStudent ? null : jobTitle.trim(),
+          // Institution: students + academicians
+          institution: isStudent || isAcademician ? institution.trim() : null,
+          // Industry partner details
+          company_name: isIndustry ? companyName.trim() : null,
+          // Job title: industry partners; designation · department for faculty
+          job_title: isIndustry
+            ? jobTitle.trim()
+            : isAcademician
+              ? `${designation.trim()} · ${department.trim()}`
+              : null,
         },
       },
     })
@@ -203,8 +226,7 @@ export default function SignUpModal({ onClose }) {
 
     if (data?.session) {
       // Email confirmation OFF → signed in immediately. AuthContext creates
-      // the profile from metadata and routes by role (student → /dashboard,
-      // industry → /industry-dashboard).
+      // the profile from metadata and routes by role to the right dashboard.
       onClose()
       return
     }
@@ -309,12 +331,14 @@ export default function SignUpModal({ onClose }) {
                         Who are you?
                       </p>
                       <div className="grid gap-3 sm:grid-cols-2">
-                        {ROLE_CARDS.map(({ id, label, hint, Icon }) => {
+                        {ROLE_CARDS.map(({ id, label, hint, Icon, wide }) => {
                           const selected = role === id
                           return (
                             <label
                               key={id}
                               className={`relative flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition duration-150 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-indigo-600/50 sm:p-5 ${
+                                wide ? 'sm:col-span-2 ' : ''
+                              }${
                                 selected
                                   ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-600/20'
                                   : 'border-gray-300 bg-white hover:border-indigo-300 hover:bg-indigo-50/40'
@@ -410,18 +434,26 @@ export default function SignUpModal({ onClose }) {
                       <span>
                         {isStudent
                           ? 'Tell us about your studies — this powers your job matches.'
-                          : 'Tell us about your role — this sets up your hiring portal.'}
+                          : isIndustry
+                            ? 'Tell us about your role — this sets up your hiring portal.'
+                            : 'Tell us about your faculty role — this sets up your academic workspace.'}
                       </span>
                     </div>
 
-                    {/* Full name (both roles) */}
+                    {/* Full name (all roles) */}
                     <div>
                       <Label htmlFor="su-name">Full name</Label>
                       <input
                         id="su-name"
                         type="text"
                         required
-                        placeholder={isStudent ? 'e.g. Ananya Sharma' : 'e.g. Rohan Mehta'}
+                        placeholder={
+                          isStudent
+                            ? 'e.g. Ananya Sharma'
+                            : isIndustry
+                              ? 'e.g. Rohan Mehta'
+                              : 'e.g. Dr. Meera Sharma'
+                        }
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
                         autoComplete="name"
@@ -502,7 +534,7 @@ export default function SignUpModal({ onClose }) {
                           </p>
                         </div>
                       </div>
-                    ) : (
+                    ) : isIndustry ? (
                       /* ------------------ Industry partner fields ------------------ */
                       <div className="grid gap-5 sm:grid-cols-2">
                         <div>
@@ -538,6 +570,57 @@ export default function SignUpModal({ onClose }) {
                           roles, review ATS-ranked matches and host campus programs.
                         </p>
                       </div>
+                    ) : (
+                      /* --------------------- Academician fields --------------------- */
+                      <div className="grid gap-5 sm:grid-cols-2">
+                        <div>
+                          <Label htmlFor="su-designation">Designation</Label>
+                          <input
+                            id="su-designation"
+                            type="text"
+                            required
+                            placeholder="e.g. Associate Professor"
+                            value={designation}
+                            onChange={(e) => setDesignation(e.target.value)}
+                            autoComplete="organization-title"
+                            className={inputClass}
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="su-department">Department</Label>
+                          <input
+                            id="su-department"
+                            type="text"
+                            required
+                            placeholder="e.g. Computer Science"
+                            value={department}
+                            onChange={(e) => setDepartment(e.target.value)}
+                            className={inputClass}
+                          />
+                        </div>
+
+                        <div className="sm:col-span-2">
+                          <Label htmlFor="su-institution-fac">Institution</Label>
+                          <input
+                            id="su-institution-fac"
+                            type="text"
+                            required
+                            value={institution}
+                            onChange={(e) => setInstitution(e.target.value)}
+                            className={inputClass}
+                          />
+                          <p className="mt-1.5 text-[11px] text-gray-400">
+                            Quantum University is set as the suggested default — change it
+                            if you teach elsewhere.
+                          </p>
+                        </div>
+
+                        <p className="text-[11px] leading-relaxed text-gray-400 sm:col-span-2">
+                          You&apos;ll land on the Faculty Portal after sign-up — FDPs,
+                          industry consultancy R&amp;D and cohort analytics.
+                        </p>
+                      </div>
                     )}
 
                     <div className="flex gap-3 pt-1">
@@ -568,7 +651,7 @@ export default function SignUpModal({ onClose }) {
                       </span>
                       <span className="max-w-full truncate rounded-full bg-white px-3 py-1 text-xs font-medium text-gray-600 ring-1 ring-gray-200">
                         {fullName.trim()}
-                        {isStudent
+                        {isStudent || isAcademician
                           ? ` · ${institution.trim() || 'Institution'}`
                           : ` · ${companyName.trim() || 'Company'}`}
                       </span>

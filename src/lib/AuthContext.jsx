@@ -22,9 +22,12 @@ export function FullScreenLoader({ label }) {
 /** A profile counts as "account exists + onboarding done" only when it has a role. */
 const isProfileComplete = (profile) => Boolean(profile?.role)
 
-/** Role-aware home route — industry partners get their own portal. */
-export const homeForRole = (role) =>
-  role === 'industry' ? '/industry-dashboard' : '/dashboard'
+/** Role-aware home route — each built portal gets its own dashboard. */
+export const homeForRole = (role) => {
+  if (role === 'industry') return '/industry-dashboard'
+  if (role === 'academician') return '/academic-dashboard'
+  return '/dashboard'
+}
 
 /**
  * Central auth state machine.

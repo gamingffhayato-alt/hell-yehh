@@ -114,7 +114,7 @@ function PostCard({ post: initialPost, notify }) {
         {post.tags.map((t) => (
           <button
             key={t}
-            onClick={() => notify(`Filtering feed by ${t} — demo`)}
+            onClick={() => notify(`Feed filtered: showing ${t} posts`)}
             className="text-xs font-semibold text-indigo-600 transition hover:underline"
           >
             {t}

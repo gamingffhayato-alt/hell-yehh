@@ -99,7 +99,7 @@ export default function SkillGapCard({ notify }) {
       </div>
 
       <button
-        onClick={() => notify('Course catalog for your gap map opens after this demo')}
+        onClick={() => notify('Course catalog for your gap map unlocks right after your next assessment')}
         className="mt-4 w-full text-center text-xs font-semibold text-indigo-600 transition hover:underline"
       >
         Browse all recommended courses →

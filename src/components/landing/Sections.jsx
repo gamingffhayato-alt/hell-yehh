@@ -357,7 +357,7 @@ const ROLES = [
   {
     Icon: BookIcon, tint: 'bg-emerald-50', tile: 'bg-emerald-500',
     title: 'Academicians', text: 'Mentor candidates, publish courses and shape industry-ready curricula.',
-    cta: 'Start mentoring', soon: true,
+    cta: 'Start mentoring', soon: false,
   },
   {
     Icon: BuildingIcon, tint: 'bg-sky-50', tile: 'bg-sky-500',
