@@ -11,6 +11,7 @@ import AdminLogin from './components/admin/AdminLogin'
 import AdminDashboard from './components/admin/AdminDashboard'
 import ContactPage from './components/ContactPage'
 import AskAiWidgetGate from './components/AskAiWidget'
+import ThemeToggle from './components/ThemeToggle'
 
 /** /signup?role=x folds into /login?role=x and auto-opens the sign-up modal —
     the query string must survive so the wizard can pre-select the role. */
@@ -50,8 +51,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
+      <ThemeToggle />
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<PublicOnlyRoute><AuthPage /></PublicOnlyRoute>} />
           {/* Public support page — submissions land in the admin Support Inbox */}
           <Route path="/contact" element={<ContactPage />} />

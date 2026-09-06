@@ -61,8 +61,11 @@ function QuizModal({ onClose, onComplete }) {
   return (
     <div className="fixed inset-0 z-[70] overflow-y-auto" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
+      {/* NOTE: text-gray-900 is required on the card — this modal renders inside
+          AssessmentBanner's text-white section, otherwise all uncolored text
+          (quiz options) inherits white and disappears on the white card. */}
       <div className="relative mx-auto w-full sm:my-10 sm:max-w-lg sm:px-4">
-        <div className="animate-fade-up min-h-screen bg-white p-6 shadow-2xl sm:min-h-0 sm:rounded-3xl sm:p-8">
+        <div className="animate-fade-up min-h-screen bg-white p-6 text-gray-900 shadow-2xl sm:min-h-0 sm:rounded-3xl sm:p-8 dark:bg-slate-900 dark:text-slate-100">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">
@@ -105,15 +108,17 @@ function QuizModal({ onClose, onComplete }) {
                     <button
                       key={opt}
                       onClick={() => setAnswers((a) => ({ ...a, [step]: oIdx }))}
-                      className={`flex w-full items-center gap-3 rounded-xl border p-3.5 text-left text-sm transition duration-150 ${
+                      className={`flex w-full items-center gap-3 rounded-xl border p-3.5 text-left text-sm font-medium text-gray-800 transition duration-150 dark:text-slate-100 ${
                         selected
-                          ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-600/20'
-                          : 'border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50'
+                          ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-600/20 dark:bg-indigo-500/15'
+                          : 'border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700/60'
                       }`}
                     >
                       <span
                         className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border text-xs font-bold ${
-                          selected ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-gray-300 text-gray-500'
+                          selected
+                            ? 'border-indigo-600 bg-indigo-600 text-white'
+                            : 'border-gray-300 text-gray-500 dark:border-slate-600 dark:text-slate-300'
                         }`}
                       >
                         {String.fromCharCode(65 + oIdx)}

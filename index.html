@@ -3,7 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ffffff" />
     <title>Intern X — Sign in</title>
+    <!-- Pre-paint theme: apply saved/system dark preference before React loads (no flash) -->
+    <script>
+      try {
+        var t = localStorage.getItem('ix_theme')
+        if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark')
+        }
+      } catch (e) {
+        /* storage blocked — default stays light */
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
