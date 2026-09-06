@@ -19,7 +19,7 @@ export default function JobMatches({ jobs, onApply, onSeeAll }) {
           <div
             key={job.id}
             className={`rounded-2xl border p-4 transition duration-150 hover:shadow-md hover:shadow-indigo-100 ${
-              job.applied ? 'border-emerald-200 bg-emerald-50/40' : 'border-gray-200 hover:border-indigo-300'
+              job.applied ? 'border-emerald-200 bg-emerald-50/40 dark:border-emerald-500/30 dark:bg-emerald-500/10' : 'border-gray-200 hover:border-indigo-300'
             }`}
           >
             <div className="flex items-start gap-3">

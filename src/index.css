@@ -68,17 +68,27 @@ html {
   .dark .bg-rose-50 { background-color: rgba(244, 63, 94, 0.08); }
   .dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.10); }
   .dark .bg-orange-50 { background-color: rgba(249, 115, 22, 0.10); }
-  /* Neutral text → lifted slate scale */
+  .dark .bg-slate-100 { background-color: #111a2e; }
+  /* Neutral text → lifted slate scale (gray + slate families) */
   .dark .text-gray-900 { color: #f1f5f9; }
   .dark .text-gray-800 { color: #e2e8f0; }
   .dark .text-gray-700 { color: #cbd5e1; }
   .dark .text-gray-600 { color: #94a3b8; }
   .dark .text-gray-500 { color: #7d8ca3; }
   .dark .text-gray-400 { color: #64748b; }
-  /* Neutral borders → slate */
+  .dark .text-slate-900 { color: #f1f5f9; }
+  .dark .text-slate-800 { color: #e2e8f0; }
+  .dark .text-slate-700 { color: #cbd5e1; }
+  .dark .text-slate-600 { color: #94a3b8; }
+  .dark .text-slate-500 { color: #8895aa; }
+  /* Neutral borders → slate (gray + slate families) */
   .dark .border-gray-100 { border-color: #1e293b; }
   .dark .border-gray-200 { border-color: #26334d; }
   .dark .border-gray-300 { border-color: #334155; }
+  .dark .border-slate-100 { border-color: #1e293b; }
+  .dark .border-slate-200 { border-color: #26334d; }
+  /* Divide rules used list separators */
+  .dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: #1e293b; }
   /* Soft shadows read as flat on dark — mute them */
   .dark .shadow-sm,
   .dark .shadow,

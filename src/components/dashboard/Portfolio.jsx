@@ -132,7 +132,7 @@ export default function Portfolio({ notify }) {
           <article
             key={p.id}
             className={`group flex flex-col rounded-2xl border p-5 transition duration-150 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-100 ${
-              p.featured ? 'border-indigo-200 bg-indigo-50/40' : 'border-gray-200 bg-white'
+              p.featured ? 'border-indigo-200 bg-indigo-50/40 dark:border-indigo-500/30 dark:bg-indigo-500/10' : 'border-gray-200 bg-white'
             }`}
           >
             <div className="flex items-center gap-2">

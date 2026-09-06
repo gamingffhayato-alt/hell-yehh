@@ -74,7 +74,7 @@ function JobStackVisual({ onGetStarted }) {
       <div className="absolute -bottom-10 -left-6 h-44 w-44 rounded-full bg-indigo-200/70 blur-3xl" />
 
       {/* Ghost card behind */}
-      <div className="absolute inset-x-8 top-5 h-full rotate-6 rounded-2xl border border-indigo-100 bg-indigo-50/60" />
+      <div className="absolute inset-x-8 top-5 h-full rotate-6 rounded-2xl border border-indigo-100 bg-indigo-50/60 dark:border-indigo-900/60 dark:bg-indigo-500/10" />
 
       {/* Main job card */}
       <div className="relative -rotate-2 rounded-2xl border border-gray-100 bg-white p-5 shadow-xl shadow-indigo-100">

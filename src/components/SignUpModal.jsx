@@ -353,7 +353,7 @@ export default function SignUpModal({ onClose }) {
                               }${
                                 selected
                                   ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-600/20'
-                                  : 'border-gray-300 bg-white hover:border-indigo-300 hover:bg-indigo-50/40'
+                                  : 'border-gray-300 bg-white hover:border-indigo-300 hover:bg-indigo-50/40 dark:hover:bg-indigo-500/10'
                               }`}
                             >
                               <input

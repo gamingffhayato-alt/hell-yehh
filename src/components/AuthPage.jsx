@@ -67,7 +67,7 @@ export default function AuthPage() {
 
       <Link
         to="/"
-        className="fixed left-4 top-4 z-40 rounded-full bg-white/90 px-4 py-2 text-sm font-medium text-gray-700 shadow-md ring-1 ring-gray-200 backdrop-blur transition hover:bg-white"
+        className="fixed left-4 top-4 z-40 rounded-full bg-white/90 px-4 py-2 text-sm font-medium text-gray-700 shadow-md ring-1 ring-gray-200 backdrop-blur transition hover:bg-white dark:bg-slate-900/90 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-slate-800"
       >
         ← Back to home
       </Link>

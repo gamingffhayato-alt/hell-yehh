@@ -180,7 +180,7 @@ export default function ConsultancyBoard({ notify }) {
             key={p.id}
             className={`rounded-2xl border p-4 transition duration-150 ${
               p.submitted
-                ? 'border-teal-200 bg-teal-50/40'
+                ? 'border-teal-200 bg-teal-50/40 dark:border-teal-500/30 dark:bg-teal-500/10'
                 : 'border-slate-200 hover:border-teal-300 hover:shadow-md hover:shadow-teal-100/60'
             }`}
           >

@@ -82,7 +82,7 @@ export default function AcademicDashboard() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* ======================= Header (light, teal accent) ======================= */}
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6">
           {/* Brand → landing */}
           <Link to="/" className="flex shrink-0 items-center gap-2.5">

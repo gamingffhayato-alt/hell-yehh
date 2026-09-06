@@ -385,7 +385,7 @@ export function RoleBento({ onComingSoon }) {
                   <Icon className="h-5 w-5" />
                 </span>
                 {soon && (
-                  <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-500 ring-1 ring-gray-200">
+                  <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-500 ring-1 ring-gray-200 dark:bg-slate-800/80 dark:text-slate-400 dark:ring-slate-700">
                     Soon
                   </span>
                 )}

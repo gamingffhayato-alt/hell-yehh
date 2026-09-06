@@ -17,7 +17,7 @@ export default function SkillGapCard({ notify }) {
       <p className="mt-0.5 text-xs text-gray-500">From your latest AI assessment</p>
 
       {/* Identified gap */}
-      <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50/60 p-4">
+      <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50/60 p-4 dark:border-rose-500/30 dark:bg-rose-500/10">
         <div className="flex items-center gap-2">
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-rose-100 text-rose-600">
             <FlameIcon className="h-4 w-4" />

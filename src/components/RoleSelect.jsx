@@ -35,7 +35,7 @@ export default function RoleSelect({ value, onChange }) {
               className={`relative flex cursor-pointer flex-col items-start gap-1 rounded-xl border p-3.5 transition duration-150 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-indigo-600/50 sm:p-4 ${
                 selected
                   ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-600/20'
-                  : 'border-gray-300 bg-white hover:border-indigo-300 hover:bg-indigo-50/40'
+                  : 'border-gray-300 bg-white hover:border-indigo-300 hover:bg-indigo-50/40 dark:hover:bg-indigo-500/10'
               }`}
             >
               <input
