@@ -78,7 +78,7 @@ export default function ContactPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-50 via-white to-white antialiased">
+    <div className="min-h-screen bg-gradient-to-b from-indigo-50 via-white to-white antialiased dark:from-[#101a30] dark:via-[#0a1120] dark:to-[#070d1a]">
       {/* Top bar */}
       <header className="border-b border-gray-100 bg-white/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">

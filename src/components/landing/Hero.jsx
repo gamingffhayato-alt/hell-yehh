@@ -160,7 +160,7 @@ export default function Hero({ onGetStarted, onSearch }) {
   }
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-indigo-50 via-white to-white">
+    <section className="relative overflow-hidden bg-gradient-to-b from-indigo-50 via-white to-white dark:from-[#101a30] dark:via-[#0a1120] dark:to-[#070d1a]">
       {/* Faint dot texture on the top half */}
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-[520px] opacity-60"
@@ -295,8 +295,8 @@ export default function Hero({ onGetStarted, onSearch }) {
               </div>
             ))}
           </div>
-          <div className="pointer-events-none absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-white to-transparent" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-white to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-white to-transparent dark:from-slate-900" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-white to-transparent dark:from-slate-900" />
         </div>
       </div>
 

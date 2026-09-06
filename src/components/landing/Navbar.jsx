@@ -32,7 +32,7 @@ export default function Navbar({ onLogin, onRegister }) {
   const close = () => setOpen(false)
 
   return (
-    <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">
       <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         {/* Brand — always routes back to the landing page */}
         <Link to="/" className="flex items-center gap-2.5" onClick={close}>
