@@ -160,38 +160,60 @@ export async function handleAts(payload, env) {
   }
 
   try {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS)
-    const res = await fetch(GROQ_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model,
-        temperature: 0.3,
-        max_tokens: 900,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: buildSystemPrompt() },
-          {
-            role: 'user',
-            content: `TARGET ROLE: ${targetRole}\n\nRESUME TEXT:\n${resumeText}\n\nReturn ONLY the strict JSON report.`,
-          },
-        ],
-      }),
-    })
-    clearTimeout(timer)
-    if (!res.ok) {
-      /* Read the upstream body and CARRY it into the catch — this is where
-         Groq says why (bad key, bad model, rate limit, quota...). */
-      const errText = await res.text().catch(() => '<unreadable body>')
-      const upstream = new Error(`Groq HTTP ${res.status}`)
-      upstream.httpStatus = res.status
-      upstream.apiResponse = errText.slice(0, 600)
-      throw upstream
+    const messages = [
+      { role: 'system', content: buildSystemPrompt() },
+      {
+        role: 'user',
+        content: `TARGET ROLE: ${targetRole}\n\nRESUME TEXT:\n${resumeText}\n\nReturn ONLY the strict JSON report.`,
+      },
+    ]
+
+    /* gpt-oss quirk (verified in our Vercel logs): with default reasoning effort
+       the model burns the max_tokens budget on hidden reasoning and emits an
+       EMPTY generation → Groq 400 json_validate_failed. So: low reasoning effort
+       + generous token headroom, and if strict JSON mode still rejects, retry
+       once in plain-text mode (our fence-cleaner + coerce handle the rest). */
+    const callGroq = async (jsonMode) => {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS)
+      const res = await fetch(GROQ_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model,
+          temperature: 0.3,
+          max_tokens: 2200,
+          ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
+          /* gpt-oss only — harmless elsewhere */
+          reasoning_effort: env?.AI_REASONING_EFFORT || 'low',
+          messages,
+        }),
+      })
+      clearTimeout(timer)
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '<unreadable body>')
+        const upstream = new Error(`Groq HTTP ${res.status}`)
+        upstream.httpStatus = res.status
+        upstream.apiResponse = errText.slice(0, 600)
+        upstream.jsonMode = jsonMode
+        throw upstream
+      }
+      const data = await res.json()
+      return String(data?.choices?.[0]?.message?.content ?? '')
     }
-    const data = await res.json()
-    let rawContent = String(data?.choices?.[0]?.message?.content ?? '')
+
+    let rawContent
+    try {
+      rawContent = await callGroq(true)
+    } catch (firstErr) {
+      const isJsonValidate =
+        firstErr?.httpStatus === 400 && /json_validate_failed/i.test(String(firstErr?.apiResponse ?? ''))
+      if (!isJsonValidate) throw firstErr
+      console.warn('ATS: json_object mode rejected (json_validate_failed, empty generation) — retrying in plain-text mode…')
+      rawContent = await callGroq(false)
+    }
+
     // Strip markdown formatting if the model disobeys (exact failsafe logic)
     rawContent = rawContent.replace(/```json/gi, '').replace(/```/gi, '').trim()
     const parsedData = JSON.parse(rawContent)
@@ -205,6 +227,7 @@ export async function handleAts(payload, env) {
         : (err?.message ?? 'unknown'),
       name: err?.name ?? null,
       httpStatus: err?.httpStatus ?? null,
+      jsonModeFailed: err?.jsonMode ?? null,
       apiResponse: err?.apiResponse ?? null,
     }))
   }
