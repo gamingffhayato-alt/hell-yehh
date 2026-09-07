@@ -140,47 +140,72 @@ export async function handleAts(payload, env) {
   }
 
   const key = env?.AI_API_KEY
+  const model = env?.AI_ATS_MODEL || 'openai/gpt-oss-20b'
+
+  /* Request envelope — lets Vercel logs correlate scans with failures without
+     leaking the secret (tail only). */
+  console.log('ATS request →', JSON.stringify({
+    targetRole,
+    textChars: resumeText.length,
+    model,
+    hasKey: Boolean(key),
+    keyTail: key ? `…${key.slice(-4)}` : null,
+  }))
 
   /* No key → instant mock. Any network/timeout/parse failure → mock as well. */
-  if (key) {
-    try {
-      const controller = new AbortController()
-      const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS)
-      const res = await fetch(GROQ_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-        signal: controller.signal,
-        body: JSON.stringify({
-          /* Strictly openai/gpt-oss-20b — matches the global AI config
-             (same model the chat widget uses; overridable without redeploy). */
-          model: env?.AI_ATS_MODEL || 'openai/gpt-oss-20b',
-          temperature: 0.3,
-          max_tokens: 900,
-          response_format: { type: 'json_object' },
-          messages: [
-            { role: 'system', content: buildSystemPrompt() },
-            {
-              role: 'user',
-              content: `TARGET ROLE: ${targetRole}\n\nRESUME TEXT:\n${resumeText}\n\nReturn ONLY the strict JSON report.`,
-            },
-          ],
-        }),
-      })
-      clearTimeout(timer)
-      if (!res.ok) {
-        const errText = await res.text().catch(() => '')
-        console.error(`ATS upstream ${res.status}: ${errText.slice(0, 200)}`)
-        throw new Error(`upstream ${res.status}`)
-      }
-      const data = await res.json()
-      const rawText = String(data?.choices?.[0]?.message?.content ?? '')
-      /* Tolerate models that wrap JSON in markdown fences */
-      const cleaned = rawText.replace(/```(?:json)?/gi, '').replace(/^[^{\[]*/, '').replace(/[^}\]]*$/, '')
-      const parsed = JSON.parse(cleaned)
-      return { status: 200, body: coerce(parsed, targetRole) }
-    } catch (err) {
-      console.error('ATS analysis fell back to mock:', err.message)
+  if (!key) {
+    console.warn('ATS: AI_API_KEY is NOT configured on this deployment — serving the 84 mock fallback.')
+    return { status: 200, body: { ...mockReport(targetRole), demo: true } }
+  }
+
+  try {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS)
+    const res = await fetch(GROQ_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model,
+        temperature: 0.3,
+        max_tokens: 900,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: buildSystemPrompt() },
+          {
+            role: 'user',
+            content: `TARGET ROLE: ${targetRole}\n\nRESUME TEXT:\n${resumeText}\n\nReturn ONLY the strict JSON report.`,
+          },
+        ],
+      }),
+    })
+    clearTimeout(timer)
+    if (!res.ok) {
+      /* Read the upstream body and CARRY it into the catch — this is where
+         Groq says why (bad key, bad model, rate limit, quota...). */
+      const errText = await res.text().catch(() => '<unreadable body>')
+      const upstream = new Error(`Groq HTTP ${res.status}`)
+      upstream.httpStatus = res.status
+      upstream.apiResponse = errText.slice(0, 600)
+      throw upstream
     }
+    const data = await res.json()
+    const rawText = String(data?.choices?.[0]?.message?.content ?? '')
+    /* Tolerate models that wrap JSON in markdown fences */
+    const cleaned = rawText.replace(/```(?:json)?/gi, '').replace(/^[^{\[]*/, '').replace(/[^}\]]*$/, '')
+    const parsed = JSON.parse(cleaned)
+    return { status: 200, body: coerce(parsed, targetRole) }
+  } catch (err) {
+    /* THE diagnostic line — always fires right before the mock fallback.
+       Check Vercel → Deployments → /api/ats-analyze → Runtime Logs for it. */
+    console.error('GROQ API ERROR (serving 84-mock fallback):', JSON.stringify({
+      reason: err?.name === 'AbortError'
+        ? `timeout — Groq did not respond within ${UPSTREAM_TIMEOUT_MS}ms`
+        : (err?.message ?? 'unknown'),
+      name: err?.name ?? null,
+      httpStatus: err?.httpStatus ?? null,
+      apiResponse: err?.apiResponse ?? null,
+    }))
   }
   return { status: 200, body: { ...mockReport(targetRole), demo: true } }
 }
