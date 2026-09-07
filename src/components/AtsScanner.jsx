@@ -306,6 +306,28 @@ export default function AtsScanner({ notify }) {
         ) : (
           /* ------------------------------ Results ------------------------------ */
           <div className="animate-fade-up">
+            {result.atsScore === 0 ? (
+              /* Invalid document (invoice/receipt/non-resume) per guardrail #1 */
+              <div className="rounded-2xl border-2 border-rose-300 bg-rose-50 p-5 text-center dark:border-rose-500/40 dark:bg-rose-500/10 sm:p-7">
+                <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-300">
+                  <XIcon className="h-6 w-6" />
+                </span>
+                <p className="mt-3 text-base font-bold text-rose-700 dark:text-rose-200">
+                  {result.verdict}
+                </p>
+                <p className="mt-1.5 text-xs leading-relaxed text-rose-500 dark:text-rose-300/80">
+                  Our ATS found no resume content in this file — it may be an invoice, receipt,
+                  or an image-only PDF. Export your resume as a text PDF and try again.
+                </p>
+                <button
+                  onClick={reset}
+                  className="mt-4 rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-500"
+                >
+                  Upload a valid resume
+                </button>
+              </div>
+            ) : (
+            <>
             {/* Score + verdict */}
             <div className="flex flex-col items-center gap-5 sm:flex-row sm:px-2">
               <ScoreGauge score={result.atsScore} />
@@ -418,6 +440,8 @@ export default function AtsScanner({ notify }) {
                 ))}
               </ul>
             </div>
+            </>
+            )}
           </div>
         )}
       </div>

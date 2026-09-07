@@ -19,7 +19,34 @@ const MAX_INPUT_CHARS = 6000
 const buildSystemPrompt = () => `You are an "Executive Tech Recruiter & ATS Algorithm" with 15 years of campus-hiring experience.
 You evaluate resumes the way a modern Applicant Tracking System does: exact keyword coverage,
 formatting parsability (tables, margins, fonts, columns), action-verb strength, and quantified impact.
-Be strict but fair. Be specific. Never invent skills the resume does not contain.
+Be strict but fair. Be specific.
+
+==================== GUARDRAILS — these override every other instruction ====================
+
+1) DOCUMENT VALIDATION RULE (run this FIRST, before any scoring).
+   Decide whether the provided text is actually a resume/CV. If it looks like an invoice,
+   payment receipt, ticket, letter, article, form, or any other non-resume text (or random
+   gibberish), you MUST strictly return: "atsScore": 0, "matchedKeywords": [], and set
+   "verdict" to exactly: "Invalid document detected. Please upload a valid resume."
+   Never give a non-resume document any score above 0, for any reason. For such documents
+   you may leave strengths and weaknesses empty and use actionableRecommendations:
+   ["Upload your actual resume as a text-based PDF."]
+
+2) ZERO-HALLUCINATION ENFORCEMENT.
+   DO NOT hallucinate, infer, or invent keywords.
+   You may only add a technology or skill to "matchedKeywords" if the exact word or phrase
+   explicitly exists in the user's uploaded text. Case differences are acceptable; synonyms,
+   abbreviations you are "pretty sure about", and implied skills are NOT. When in doubt,
+   leave it out.
+
+3) HARSH SCORING FOR POOR RESUMES.
+   Scores are earned from 0, not granted from 70. A resume with zero quantified metrics,
+   terrible formatting, or missing core technologies for the target role MUST be scored
+   confidently below 40 — do not soften it into an average passing grade. Honest scoring:
+   0 = not a resume · 1–40 = poor/unqualified for the role · 40–60 = thin, major gaps ·
+   60–80 = credible · 80+ = exceptional, with metrics and tight stack coverage.
+
+==========================================================================================
 
 You must respond with STRICT JSON ONLY — no markdown fences, no prose before or after —
 matching this exact structure:
@@ -38,10 +65,10 @@ matching this exact structure:
 }
 
 Rules:
-- atsScore is an integer 0–100 for the given target role.
-- matchedKeywords = skills actually present in the resume text (max 10).
+- atsScore is an integer 0–100 for the given target role, following the scoring bands above.
+- matchedKeywords = skills whose EXACT words appear in the resume text (max 10; [] if none).
 - missingKeywords = high-value ATS keywords for the target role that are absent (max 10).
-- formattingRating is exactly "Pass", "Needs Work", or "Fail".
+- formattingRating is exactly "Pass", "Needs Work", or "Fail" ("Fail" for non-resumes).
 - strengths = 2–4 short items; weaknesses = 2–4 short items; actionableRecommendations = 3–5 concrete, imperative fixes.
 - JSON only. No commentary.`
 
@@ -70,25 +97,28 @@ const mockReport = (targetRole) => ({
   ],
 })
 
-/** Clamp/normalize model output into the contract the UI renders. */
+/** Clamp/normalize model output into the contract the UI renders.
+    IMPORTANT: explicitly-empty arrays (e.g. matchedKeywords for an invalid
+    document) are preserved — never replaced by fallback content, otherwise
+    the document-validation guardrail would be silently undone. */
 function coerce(raw, targetRole) {
-  const arr = (v, max = 10) =>
-    Array.isArray(v) ? v.filter((x) => typeof x === 'string' && x.trim()).slice(0, max) : []
+  const arr = (v, max = 10) => {
+    if (!Array.isArray(v)) return null // not an array at all → use fallback
+    return v.filter((x) => typeof x === 'string' && x.trim()).slice(0, max)
+  }
   const score = Number(raw?.atsScore)
   const fallback = mockReport(targetRole)
   return {
     atsScore: Number.isFinite(score) ? Math.max(0, Math.min(100, Math.round(score))) : fallback.atsScore,
     verdict: typeof raw?.verdict === 'string' && raw.verdict.trim() ? raw.verdict.trim() : fallback.verdict,
-    matchedKeywords: arr(raw?.matchedKeywords).length ? arr(raw?.matchedKeywords) : fallback.matchedKeywords,
-    missingKeywords: arr(raw?.missingKeywords).length ? arr(raw?.missingKeywords) : fallback.missingKeywords,
+    matchedKeywords: arr(raw?.matchedKeywords) ?? fallback.matchedKeywords,
+    missingKeywords: arr(raw?.missingKeywords) ?? fallback.missingKeywords,
     formattingRating: ['Pass', 'Needs Work', 'Fail'].includes(raw?.formattingRating)
       ? raw.formattingRating
       : fallback.formattingRating,
-    strengths: arr(raw?.strengths, 5).length ? arr(raw?.strengths, 5) : fallback.strengths,
-    weaknesses: arr(raw?.weaknesses, 5).length ? arr(raw?.weaknesses, 5) : fallback.weaknesses,
-    actionableRecommendations: arr(raw?.actionableRecommendations, 6).length
-      ? arr(raw?.actionableRecommendations, 6)
-      : fallback.actionableRecommendations,
+    strengths: arr(raw?.strengths, 5) ?? fallback.strengths,
+    weaknesses: arr(raw?.weaknesses, 5) ?? fallback.weaknesses,
+    actionableRecommendations: arr(raw?.actionableRecommendations, 6) ?? fallback.actionableRecommendations,
   }
 }
 
