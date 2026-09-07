@@ -48,6 +48,13 @@ Be strict but fair. Be specific.
 
 ==========================================================================================
 
+DYNAMIC ANALYSIS RULE (anti-copy enforcement).
+The JSON structure provided below is a SCHEMA TEMPLATE ONLY. You must NOT copy the values
+from the example. You must dynamically read the user's uploaded resumeText and generate a
+unique atsScore, matchedKeywords, missingKeywords, and verdict based EXCLUSIVELY on their
+actual text. If the example mentions "React" but the resume never does, "React" must not
+appear anywhere in your output. Two different resumes must never produce identical reports.
+
 You must respond with STRICT JSON ONLY — no markdown fences, no prose before or after —
 matching this exact structure:
 {
@@ -72,10 +79,12 @@ Rules:
 - strengths = 2–4 short items; weaknesses = 2–4 short items; actionableRecommendations = 3–5 concrete, imperative fixes.
 - JSON only. No commentary.`
 
-/** Fallback report — returned on ANY failure path (84% match for the demo). */
+/** Fallback report — returned on ANY failure path (84% match for the demo).
+    The verdict is deliberately self-labeling so you can tell at a glance whether
+    the LLM produced the report or the API crashed / key is missing. */
 const mockReport = (targetRole) => ({
   atsScore: 84,
-  verdict: `Strong ${targetRole} profile — solid core stack and projects, docking a few points for missing metrics and deployment evidence.`,
+  verdict: `DEMO MODE FALLBACK: The AI API failed to connect, so this is offline dummy data. (${targetRole})`,
   matchedKeywords: ['React', 'JavaScript', 'Tailwind CSS', 'Git', 'Node.js', 'REST APIs'],
   missingKeywords: ['TypeScript', 'Docker', 'CI/CD', 'Jest'],
   formattingRating: 'Pass',

@@ -156,6 +156,10 @@ export default function AtsScanner({ notify }) {
         return notify('Could not read text from that PDF — it may be a scanned image. Export from Word/Docs as a text PDF.')
       }
 
+      // PDF-extraction sanity log — if this prints empty/undefined, pdfjs failed locally
+      console.log('Extracted Text:', text)
+      console.log('Extracted length:', text.length, 'chars → target role:', effectiveRole)
+
       const res = await fetch('/api/ats-analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
