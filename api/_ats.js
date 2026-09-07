@@ -77,7 +77,8 @@ Rules:
 - missingKeywords = high-value ATS keywords for the target role that are absent (max 10).
 - formattingRating is exactly "Pass", "Needs Work", or "Fail" ("Fail" for non-resumes).
 - strengths = 2–4 short items; weaknesses = 2–4 short items; actionableRecommendations = 3–5 concrete, imperative fixes.
-- JSON only. No commentary.`
+
+CRITICAL: You are an automated API. You must output ONLY a raw, valid JSON object. DO NOT wrap the output in \`\`\`json ... \`\`\` markdown blocks. DO NOT include any conversational text, greetings, or explanations before or after the JSON. Return only the raw JSON string.`
 
 /** Fallback report — returned on ANY failure path (84% match for the demo).
     The verdict is deliberately self-labeling so you can tell at a glance whether
@@ -190,11 +191,11 @@ export async function handleAts(payload, env) {
       throw upstream
     }
     const data = await res.json()
-    const rawText = String(data?.choices?.[0]?.message?.content ?? '')
-    /* Tolerate models that wrap JSON in markdown fences */
-    const cleaned = rawText.replace(/```(?:json)?/gi, '').replace(/^[^{\[]*/, '').replace(/[^}\]]*$/, '')
-    const parsed = JSON.parse(cleaned)
-    return { status: 200, body: coerce(parsed, targetRole) }
+    let rawContent = String(data?.choices?.[0]?.message?.content ?? '')
+    // Strip markdown formatting if the model disobeys (exact failsafe logic)
+    rawContent = rawContent.replace(/```json/gi, '').replace(/```/gi, '').trim()
+    const parsedData = JSON.parse(rawContent)
+    return { status: 200, body: coerce(parsedData, targetRole) }
   } catch (err) {
     /* THE diagnostic line — always fires right before the mock fallback.
        Check Vercel → Deployments → /api/ats-analyze → Runtime Logs for it. */
