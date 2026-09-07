@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
 import WelcomeHero from './WelcomeHero'
 import AssessmentBanner from './AssessmentBanner'
+import AtsScanner from '../AtsScanner'
 import Portfolio from './Portfolio'
 import Feed from './Feed'
 import JobMatches from './JobMatches'
@@ -321,6 +322,7 @@ export default function StudentDashboard() {
           {/* Main column */}
           <div className="min-w-0 space-y-5 lg:col-span-2">
             <AssessmentBanner notify={notify} />
+            <AtsScanner notify={notify} />
             <Portfolio notify={notify} />
             <Feed query={query} notify={notify} />
           </div>

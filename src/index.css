@@ -44,6 +44,20 @@ html {
   animation: marquee 32s linear infinite;
 }
 
+/* Vertical sweep across the ATS dropzone while scanning */
+@keyframes scan-sweep {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(120%);
+  }
+}
+
+.animate-scan-sweep {
+  animation: scan-sweep 1.6s ease-in-out infinite;
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    DARK MODE ADAPTER — v4's dark: variants handle accents; these rules
    flip the app's neutral surfaces/text app-wide without touching every
