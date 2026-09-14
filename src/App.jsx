@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider, FullScreenLoader, homeForRole, useAuth } from './lib/AuthContext'
 import LandingPage from './components/landing/LandingPage'
+import WhyInternX from './components/landing/WhyInternX'
 import AuthPage from './components/AuthPage'
 import DetailsPage from './components/DetailsPage'
 import ProfilePage from './components/ProfilePage'
@@ -54,6 +55,7 @@ export default function App() {
       <ThemeToggle />
       <Routes>
         <Route path="/" element={<LandingPage />} />
+          <Route path="/why-intern-x" element={<WhyInternX />} />
           <Route path="/login" element={<PublicOnlyRoute><AuthPage /></PublicOnlyRoute>} />
           {/* Public support page — submissions land in the admin Support Inbox */}
           <Route path="/contact" element={<ContactPage />} />
