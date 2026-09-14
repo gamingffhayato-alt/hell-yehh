@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../lib/AuthContext'
 
-/* Icons — Lucide style, inline SVG, no external deps */
 function ArrowRight(props) {
   return (
     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
@@ -79,18 +78,12 @@ export default function LandingPage() {
 
           <div className="flex items-center gap-2">
             {isLoggedIn ? (
-              <Link
-                to="/dashboard"
-                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-slate-900 px-5 text-[13.5px] font-semibold tracking-[-0.01em] text-white ring-1 ring-slate-900 transition hover:bg-black active:scale-[0.98] dark:bg-white dark:text-slate-950 dark:ring-white dark:hover:bg-slate-100"
-              >
+              <Link to="/dashboard" className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-slate-900 px-5 text-[13.5px] font-semibold tracking-[-0.01em] text-white ring-1 ring-slate-900 transition hover:bg-black active:scale-[0.98] dark:bg-white dark:text-slate-950 dark:ring-white dark:hover:bg-slate-100">
                 Dashboard
                 <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             ) : (
-              <Link
-                to="/login"
-                className="inline-flex h-9 items-center justify-center rounded-full bg-slate-900 px-5 text-[13.5px] font-semibold tracking-[-0.01em] text-white ring-1 ring-slate-900 transition hover:bg-black active:scale-[0.98] dark:bg-white dark:text-slate-950 dark:ring-white dark:hover:bg-slate-100"
-              >
+              <Link to="/login" className="inline-flex h-9 items-center justify-center rounded-full bg-slate-900 px-5 text-[13.5px] font-semibold tracking-[-0.01em] text-white ring-1 ring-slate-900 transition hover:bg-black active:scale-[0.98] dark:bg-white dark:text-slate-950 dark:ring-white dark:hover:bg-slate-100">
                 Log In / Sign Up
               </Link>
             )}
@@ -104,13 +97,7 @@ export default function LandingPage() {
           <div className="pointer-events-none absolute -top-28 left-1/2 h-[680px] w-[880px] -translate-x-1/2 rounded-full bg-gradient-to-b from-indigo-500/10 via-indigo-500/[0.06] to-transparent blur-[70px] dark:from-indigo-500/20 dark:via-indigo-500/10" />
           <div className="pointer-events-none absolute -top-32 -left-32 h-[460px] w-[460px] rounded-full bg-indigo-500/10 blur-[80px] dark:bg-indigo-500/20" />
           <div className="pointer-events-none absolute -top-24 -right-32 h-[460px] w-[460px] rounded-full bg-violet-500/10 blur-[80px] dark:bg-violet-500/15" />
-          <div
-            className="pointer-events-none absolute inset-0 opacity-[0.022] dark:opacity-[0.04]"
-            style={{
-              backgroundImage: `linear-gradient(to right, #000 1px, transparent 1px), linear-gradient(to bottom, #000 1px, transparent 1px)`,
-              backgroundSize: '32px 32px',
-            }}
-          />
+          <div className="pointer-events-none absolute inset-0 opacity-[0.022] dark:opacity-[0.04]" style={{ backgroundImage: `linear-gradient(to right, #000 1px, transparent 1px), linear-gradient(to bottom, #000 1px, transparent 1px)`, backgroundSize: '32px 32px' }} />
 
           <div className="relative mx-auto max-w-[1200px] px-6 pb-20 pt-20 sm:pb-28 sm:pt-28 lg:pt-36">
             <div className="mx-auto max-w-[820px] text-center">
@@ -129,26 +116,17 @@ export default function LandingPage() {
 
               <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 {isLoggedIn ? (
-                  <Link
-                    to="/dashboard"
-                    className="inline-flex h-[44px] w-full items-center justify-center gap-2 rounded-full bg-slate-900 px-7 text-[14px] font-semibold tracking-[-0.01em] text-white shadow-[0_1px_2px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.08)] ring-1 ring-slate-900 transition hover:bg-black active:scale-[0.98] dark:bg-white dark:text-slate-950 dark:ring-white dark:hover:bg-slate-100 sm:w-auto"
-                  >
+                  <Link to="/dashboard" className="inline-flex h-[44px] w-full items-center justify-center gap-2 rounded-full bg-slate-900 px-7 text-[14px] font-semibold tracking-[-0.01em] text-white shadow-[0_1px_2px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.08)] ring-1 ring-slate-900 transition hover:bg-black active:scale-[0.98] dark:bg-white dark:text-slate-950 dark:ring-white dark:hover:bg-slate-100 sm:w-auto">
                     Go to Dashboard
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 ) : (
-                  <Link
-                    to="/login"
-                    className="inline-flex h-[44px] w-full items-center justify-center gap-2 rounded-full bg-slate-900 px-7 text-[14px] font-semibold tracking-[-0.01em] text-white shadow-[0_1px_2px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.08)] ring-1 ring-slate-900 transition hover:bg-black active:scale-[0.98] dark:bg-white dark:text-slate-950 dark:ring-white dark:hover:bg-slate-100 sm:w-auto"
-                  >
+                  <Link to="/login" className="inline-flex h-[44px] w-full items-center justify-center gap-2 rounded-full bg-slate-900 px-7 text-[14px] font-semibold tracking-[-0.01em] text-white shadow-[0_1px_2px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.08)] ring-1 ring-slate-900 transition hover:bg-black active:scale-[0.98] dark:bg-white dark:text-slate-950 dark:ring-white dark:hover:bg-slate-100 sm:w-auto">
                     Log In / Sign Up
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 )}
-                <a
-                  href="#portals"
-                  className="inline-flex h-[44px] w-full items-center justify-center rounded-full bg-white px-7 text-[14px] font-semibold tracking-[-0.01em] text-slate-700 ring-1 ring-gray-200 transition hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98] dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-800 dark:hover:bg-slate-800 dark:hover:text-white sm:w-auto"
-                >
+                <a href="#portals" className="inline-flex h-[44px] w-full items-center justify-center rounded-full bg-white px-7 text-[14px] font-semibold tracking-[-0.01em] text-slate-700 ring-1 ring-gray-200 transition hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98] dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-800 dark:hover:bg-slate-800 dark:hover:text-white sm:w-auto">
                   View portals
                 </a>
               </div>
@@ -156,35 +134,8 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* NEW Brief Why Intern X Section */}
-        <section className="relative border-y border-gray-100 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/40">
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/60 to-transparent dark:from-slate-950/20" />
-          <div className="relative mx-auto max-w-[1200px] px-6 py-10 sm:py-14">
-            <div className="flex flex-col items-start justify-between gap-6 rounded-2xl bg-white p-6 ring-1 ring-gray-200 dark:bg-slate-900 dark:ring-slate-800 sm:flex-row sm:items-center sm:p-7">
-              <div className="flex max-w-[720px] items-start gap-4">
-                <span className="mt-0.5 hidden h-8 w-8 shrink-0 place-items-center rounded-full bg-slate-900 text-white ring-1 ring-slate-900 dark:bg-white dark:text-slate-950 dark:ring-white sm:grid">
-                  <span className="text-[11px] font-bold">IX</span>
-                </span>
-                <div>
-                  <div className="mono text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">Why Intern X</div>
-                  <p className="mt-2 text-[15px] font-medium leading-6 tracking-[-0.01em] text-slate-900 dark:text-white sm:text-[16px]">
-                    A seamless 3-way connection between Students, Industry, and Faculty built on 100% verified profiles.
-                  </p>
-                </div>
-              </div>
-              <Link
-                to="/why-intern-x"
-                className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full bg-white px-5 text-[13px] font-semibold tracking-[-0.01em] text-slate-900 ring-1 ring-gray-200 transition hover:bg-slate-50 active:scale-[0.98] dark:bg-slate-800 dark:text-white dark:ring-slate-700 dark:hover:bg-slate-700 sm:ml-6"
-              >
-                View details
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        {/* Portals Section */}
-        <section id="portals" className="scroll-mt-[64px] border-b border-gray-100 bg-white dark:border-slate-800 dark:bg-slate-950">
+        {/* Portals Section — Directly below Hero */}
+        <section id="portals" className="scroll-mt-[64px] border-t border-gray-100 bg-white dark:border-slate-800 dark:bg-slate-950">
           <div className="mx-auto max-w-[1200px] px-6 py-16 sm:py-24">
             <div className="mx-auto max-w-[640px] text-center sm:text-left">
               <div className="mono text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500 sm:text-left">Portals</div>
@@ -195,13 +146,12 @@ export default function LandingPage() {
               {/* Student */}
               <div className="group relative flex flex-col rounded-2xl bg-white p-[1px] transition duration-200 hover:-translate-y-[2px] dark:bg-slate-900">
                 <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gray-200 to-gray-100 opacity-0 transition group-hover:opacity-100 dark:from-slate-800 dark:to-slate-800" />
-                <div className="relative flex h-full flex-col rounded-[15px] bg-white p-6 ring-1 ring-gray-200 transition group-hover:ring-gray-300 group-hover:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.12)] dark:bg-slate-900 dark:ring-slate-800 dark:group-hover:ring-slate-700 dark:group-hover:shadow-none">
+                <div className="relative flex h-full flex-col rounded-[15px] bg-white p-6 ring-1 ring-gray-200 transition group-hover:ring-gray-300 dark:bg-slate-900 dark:ring-slate-800 dark:group-hover:ring-slate-700">
                   <span className="grid h-10 w-10 place-items-center rounded-xl bg-slate-900 text-white ring-1 ring-slate-900 dark:bg-white dark:text-slate-950 dark:ring-white">
                     <GraduationCap className="h-[18px] w-[18px]" />
                   </span>
                   <h3 className="mt-5 text-[15px] font-semibold tracking-[-0.02em] text-slate-900 dark:text-white">Student</h3>
                   <p className="mt-2 text-[13.5px] leading-[1.6] tracking-[-0.01em] text-slate-600 dark:text-slate-300">Build a digital CV, get AI-assessed, and track applications.</p>
-                  <p className="mono mt-4 text-[11px] tracking-[-0.01em] text-slate-500 dark:text-slate-400">• Digital CV • ATS • Tracker</p>
                   <div className="mt-auto pt-6">
                     <Link to="/login?role=student" className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-full bg-slate-900 px-4 text-[13px] font-semibold tracking-[-0.01em] text-white ring-1 ring-slate-900 transition hover:bg-black active:scale-[0.98] dark:bg-white dark:text-slate-950 dark:ring-white dark:hover:bg-slate-100">
                       Log In as Student
@@ -214,15 +164,14 @@ export default function LandingPage() {
               {/* Industry Partner */}
               <div className="group relative flex flex-col rounded-2xl bg-white p-[1px] transition duration-200 hover:-translate-y-[2px] dark:bg-slate-900">
                 <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gray-200 to-gray-100 opacity-0 transition group-hover:opacity-100 dark:from-slate-800 dark:to-slate-800" />
-                <div className="relative flex h-full flex-col rounded-[15px] bg-white p-6 ring-1 ring-gray-200 transition group-hover:ring-gray-300 group-hover:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.12)] dark:bg-slate-900 dark:ring-slate-800 dark:group-hover:ring-slate-700">
+                <div className="relative flex h-full flex-col rounded-[15px] bg-white p-6 ring-1 ring-gray-200 transition group-hover:ring-gray-300 dark:bg-slate-900 dark:ring-slate-800 dark:group-hover:ring-slate-700">
                   <span className="grid h-10 w-10 place-items-center rounded-xl bg-white text-slate-900 ring-1 ring-gray-200 dark:bg-slate-800 dark:text-white dark:ring-slate-700">
                     <Building className="h-[18px] w-[18px]" />
                   </span>
                   <h3 className="mt-5 text-[15px] font-semibold tracking-[-0.02em] text-slate-900 dark:text-white">Industry Partner</h3>
                   <p className="mt-2 text-[13.5px] leading-[1.6] tracking-[-0.01em] text-slate-600 dark:text-slate-300">Post roles and get instant ATS-ranked candidate matches.</p>
-                  <p className="mono mt-4 text-[11px] tracking-[-0.01em] text-slate-500 dark:text-slate-400">• Job Creator • ATS Rank • Feed</p>
                   <div className="mt-auto pt-6">
-                    <Link to="/login?role=industry" className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-full bg-white px-4 text-[13px] font-semibold tracking-[-0.01em] text-slate-900 ring-1 ring-gray-200 transition hover:bg-slate-50 hover:ring-gray-300 active:scale-[0.98] dark:bg-slate-800 dark:text-white dark:ring-slate-700 dark:hover:bg-slate-700">
+                    <Link to="/login?role=industry" className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-full bg-white px-4 text-[13px] font-semibold tracking-[-0.01em] text-slate-900 ring-1 ring-gray-200 transition hover:bg-slate-50 active:scale-[0.98] dark:bg-slate-800 dark:text-white dark:ring-slate-700 dark:hover:bg-slate-700">
                       Log In as Industry
                       <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
                     </Link>
@@ -233,15 +182,14 @@ export default function LandingPage() {
               {/* Academician */}
               <div className="group relative flex flex-col rounded-2xl bg-white p-[1px] transition duration-200 hover:-translate-y-[2px] dark:bg-slate-900">
                 <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gray-200 to-gray-100 opacity-0 transition group-hover:opacity-100 dark:from-slate-800 dark:to-slate-800" />
-                <div className="relative flex h-full flex-col rounded-[15px] bg-white p-6 ring-1 ring-gray-200 transition group-hover:ring-gray-300 group-hover:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.12)] dark:bg-slate-900 dark:ring-slate-800 dark:group-hover:ring-slate-700">
+                <div className="relative flex h-full flex-col rounded-[15px] bg-white p-6 ring-1 ring-gray-200 transition group-hover:ring-gray-300 dark:bg-slate-900 dark:ring-slate-800 dark:group-hover:ring-slate-700">
                   <span className="grid h-10 w-10 place-items-center rounded-xl bg-white text-slate-900 ring-1 ring-gray-200 dark:bg-slate-800 dark:text-white dark:ring-slate-700">
                     <BookOpen className="h-[18px] w-[18px]" />
                   </span>
                   <h3 className="mt-5 text-[15px] font-semibold tracking-[-0.02em] text-slate-900 dark:text-white">Academician</h3>
                   <p className="mt-2 text-[13.5px] leading-[1.6] tracking-[-0.01em] text-slate-600 dark:text-slate-300">Monitor cohort analytics, skill gaps, and R&amp;D consultancy.</p>
-                  <p className="mono mt-4 text-[11px] tracking-[-0.01em] text-slate-500 dark:text-slate-400">• Analytics • Skill Gap • Consultancy</p>
                   <div className="mt-auto pt-6">
-                    <Link to="/login?role=academician" className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-full bg-white px-4 text-[13px] font-semibold tracking-[-0.01em] text-slate-900 ring-1 ring-gray-200 transition hover:bg-slate-50 hover:ring-gray-300 active:scale-[0.98] dark:bg-slate-800 dark:text-white dark:ring-slate-700 dark:hover:bg-slate-700">
+                    <Link to="/login?role=academician" className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-full bg-white px-4 text-[13px] font-semibold tracking-[-0.01em] text-slate-900 ring-1 ring-gray-200 transition hover:bg-slate-50 active:scale-[0.98] dark:bg-slate-800 dark:text-white dark:ring-slate-700 dark:hover:bg-slate-700">
                       Log In as Academician
                       <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
                     </Link>
@@ -252,15 +200,14 @@ export default function LandingPage() {
               {/* Admin */}
               <div className="group relative flex flex-col rounded-2xl bg-white p-[1px] transition duration-200 hover:-translate-y-[2px] dark:bg-slate-900">
                 <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gray-200 to-gray-100 opacity-0 transition group-hover:opacity-100 dark:from-slate-800 dark:to-slate-800" />
-                <div className="relative flex h-full flex-col rounded-[15px] bg-white p-6 ring-1 ring-gray-200 transition group-hover:ring-gray-300 group-hover:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.12)] dark:bg-slate-900 dark:ring-slate-800 dark:group-hover:ring-slate-700">
+                <div className="relative flex h-full flex-col rounded-[15px] bg-white p-6 ring-1 ring-gray-200 transition group-hover:ring-gray-300 dark:bg-slate-900 dark:ring-slate-800 dark:group-hover:ring-slate-700">
                   <span className="grid h-10 w-10 place-items-center rounded-xl bg-white text-slate-900 ring-1 ring-gray-200 dark:bg-slate-800 dark:text-white dark:ring-slate-700">
                     <ShieldCheck className="h-[18px] w-[18px]" />
                   </span>
                   <h3 className="mt-5 text-[15px] font-semibold tracking-[-0.02em] text-slate-900 dark:text-white">Admin</h3>
                   <p className="mt-2 text-[13.5px] leading-[1.6] tracking-[-0.01em] text-slate-600 dark:text-slate-300">Verify institutional documents and manage platform access.</p>
-                  <p className="mono mt-4 text-[11px] tracking-[-0.01em] text-slate-500 dark:text-slate-400">• Verification • Access Control • Inbox</p>
                   <div className="mt-auto pt-6">
-                    <Link to="/admin-login" className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-full bg-white px-4 text-[13px] font-semibold tracking-[-0.01em] text-slate-900 ring-1 ring-gray-200 transition hover:bg-slate-50 hover:ring-gray-300 active:scale-[0.98] dark:bg-slate-800 dark:text-white dark:ring-slate-700 dark:hover:bg-slate-700">
+                    <Link to="/admin-login" className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-full bg-white px-4 text-[13px] font-semibold tracking-[-0.01em] text-slate-900 ring-1 ring-gray-200 transition hover:bg-slate-50 active:scale-[0.98] dark:bg-slate-800 dark:text-white dark:ring-slate-700 dark:hover:bg-slate-700">
                       Admin Login
                       <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
                     </Link>
@@ -270,9 +217,38 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        {/* Why Intern X Highlight Section — BOTTOM OF PAGE, before footer */}
+        <section className="relative border-t border-gray-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/50">
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-indigo-500/[0.06] via-transparent to-violet-500/[0.06] dark:from-indigo-500/10 dark:to-violet-500/10" />
+          <div className="pointer-events-none absolute left-1/2 top-0 h-[400px] w-[800px] -translate-x-1/2 rounded-full bg-indigo-500/10 blur-[80px] dark:bg-indigo-500/15" />
+
+          <div className="relative mx-auto max-w-[1200px] px-6 py-14 sm:py-20">
+            <div className="relative overflow-hidden rounded-[24px] bg-white p-[1px] ring-1 ring-gray-200 dark:bg-slate-900 dark:ring-slate-800">
+              <div className="absolute inset-0 rounded-[24px] bg-gradient-to-br from-indigo-500/10 via-transparent to-violet-500/10 dark:from-indigo-500/20 dark:to-violet-500/10" />
+              <div className="relative flex flex-col items-start justify-between gap-8 rounded-[23px] bg-white px-7 py-8 dark:bg-slate-900 sm:flex-row sm:items-center sm:px-10 sm:py-10">
+                <div className="max-w-[620px]">
+                  <div className="mono inline-flex items-center gap-2 rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 ring-1 ring-gray-200 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700">
+                    <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" /> Why Intern X
+                  </div>
+                  <p className="mt-4 text-[18px] font-semibold leading-[1.35] tracking-[-0.02em] text-slate-900 dark:text-white sm:text-[20px]">
+                    A seamless 3-way connection between Students, Industry, and Faculty built on 100% verified profiles.
+                  </p>
+                  <p className="mt-2 text-[13.5px] leading-6 tracking-[-0.01em] text-slate-600 dark:text-slate-300">
+                    One unified place for internships, skill polishing, and faculty R&D — with zero data crossover.
+                  </p>
+                </div>
+
+                <Link to="/why-intern-x" className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-slate-900 px-7 text-[14px] font-semibold tracking-[-0.01em] text-white ring-1 ring-slate-900 transition hover:bg-black active:scale-[0.98] dark:bg-white dark:text-slate-950 dark:ring-white dark:hover:bg-slate-100">
+                  View details
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
 
-      {/* Footer */}
       <footer className="border-t border-gray-100 bg-white dark:border-slate-800 dark:bg-slate-950">
         <div className="mx-auto max-w-[1200px] px-6 py-10 sm:py-12">
           <div className="flex flex-col items-start justify-between gap-8 sm:flex-row sm:items-center">
