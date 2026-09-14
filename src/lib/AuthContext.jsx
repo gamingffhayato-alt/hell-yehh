@@ -28,15 +28,12 @@ export const homeForRole = (role) => {
 }
 
 /**
- * Optimized AuthProvider — fixes login lag & tab-switch reset
+ * Optimized AuthProvider — fixes login lag, tab-switch reset, and onboarding redirect loop
  *
- * Performance fixes:
- * - Single source of truth with refs to avoid stale closures & extra re-renders
- * - hasLoadedOnceRef ensures FullScreenLoader ONLY on very first mount
- * - TOKEN_REFRESHED / USER_UPDATED from tab focus are handled silently (no loading, no navigation)
- * - All navigate calls use { replace: true } to avoid history buildup & freeze
- * - Profile query only on INITIAL_SESSION and SIGNED_IN, not on focus events
- * - State batching: setSession + setProfile + setStatus in same tick where possible
+ * - hasLoadedOnceRef ensures FullScreenLoader ONLY on first mount
+ * - TOKEN_REFRESHED / USER_UPDATED handled silently (no loading, no nav)
+ * - navigateReplace uses { replace: true } to avoid history bloat
+ * - completeUserProfile() syncs global state BEFORE navigate, so ProtectedRoute doesn't bounce back
  */
 export function AuthProvider({ children }) {
   const navigate = useNavigate()
@@ -48,7 +45,6 @@ export function AuthProvider({ children }) {
   const statusRef = useRef('loading')
   const hasLoadedOnceRef = useRef(false)
 
-  // Keep refs in sync without triggering re-renders
   useEffect(() => {
     sessionRef.current = session
   }, [session])
@@ -56,7 +52,6 @@ export function AuthProvider({ children }) {
     statusRef.current = status
   }, [status])
 
-  // Stable navigation helper with replace:true to prevent history bloat (fixes lag)
   const navigateReplace = useCallback(
     (to, opts = {}) => {
       navigate(to, { replace: true, ...opts })
@@ -64,21 +59,35 @@ export function AuthProvider({ children }) {
     [navigate]
   )
 
+  // Critical fix for onboarding redirect loop: mark profile as complete in global context FIRST
+  // Dashboard is protected and checks profileCompleted / status === 'ready' — must update before navigate
+  const completeUserProfile = useCallback(
+    async (newProfileData = null) => {
+      // If caller passes full profile, use it; otherwise keep existing and just mark ready
+      if (newProfileData) {
+        setProfile(newProfileData)
+        sessionRef.current = sessionRef.current // keep session
+      }
+      setStatus('ready')
+      statusRef.current = 'ready'
+      // Small tick to let React batch update before navigation
+      await new Promise((r) => setTimeout(r, 0))
+    },
+    []
+  )
+
   useEffect(() => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      // Use queueMicrotask-like setTimeout 0 to avoid Supabase deadlock, but keep it minimal
       setTimeout(async () => {
         const previousSession = sessionRef.current
         const previousStatus = statusRef.current
 
-        // Batch session update immediately — snappy UI, no waiting for profile query
         setSession(nextSession ?? null)
         sessionRef.current = nextSession ?? null
 
         if (!nextSession?.user) {
-          // Signed out — single batched update
           setProfile(null)
           setStatus('signedOut')
           statusRef.current = 'signedOut'
@@ -90,18 +99,15 @@ export function AuthProvider({ children }) {
         const wasSignedOut = previousStatus === 'signedOut' || !previousSession
         const shouldShowLoader = isInitialLoad || wasSignedOut || previousStatus === 'loading'
 
-        // Only show loader on first mount or fresh sign-in — prevents "Preparing your setup..." on tab switch
         if (shouldShowLoader) {
           setStatus('loading')
           statusRef.current = 'loading'
         }
 
-        // Silent handling for focus events — prevents unmounting forms and OTP loss
         if (event !== 'SIGNED_IN' && event !== 'INITIAL_SESSION') {
           return
         }
 
-        // Profile resolution — only on real auth events, not focus
         let resolvedProfile = null
         try {
           const { data: prof, error } = await supabase
@@ -128,13 +134,6 @@ export function AuthProvider({ children }) {
             email: nextSession.user.email,
             full_name: md.full_name || null,
             role: md.role || 'student',
-            marketing_source: md.marketing_source || null,
-            class_year: md.class_year || null,
-            course: md.course || null,
-            stream: md.stream || null,
-            institution: md.institution || null,
-            company_name: md.company_name || null,
-            job_title: md.job_title || null,
           }
           const { error: upsertError } = await supabase.from('profiles').upsert([record])
           if (!upsertError) resolvedProfile = record
@@ -156,8 +155,6 @@ export function AuthProvider({ children }) {
         sessionStorage.removeItem('oauth_role')
 
         const complete = isProfileComplete(resolvedProfile)
-
-        // Batch profile + status together for fewer re-renders
         setProfile(resolvedProfile)
 
         if (event === 'SIGNED_IN') {
@@ -194,7 +191,6 @@ export function AuthProvider({ children }) {
           return
         }
 
-        // INITIAL_SESSION
         const nextStatus = complete ? 'ready' : 'needsOnboarding'
         setStatus(nextStatus)
         statusRef.current = nextStatus
@@ -206,7 +202,7 @@ export function AuthProvider({ children }) {
   }, [navigateReplace])
 
   return (
-    <AuthContext.Provider value={{ session, profile, status, setProfile, setStatus }}>
+    <AuthContext.Provider value={{ session, profile, status, setProfile, setStatus, completeUserProfile }}>
       {children}
     </AuthContext.Provider>
   )

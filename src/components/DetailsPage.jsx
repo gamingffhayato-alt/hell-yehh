@@ -81,7 +81,7 @@ function Section({ number, title, subtitle, children }) {
 }
 
 export default function DetailsPage() {
-  const { session, setProfile, setStatus } = useAuth()
+  const { session, setProfile, setStatus, completeUserProfile } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const user = session?.user
@@ -140,13 +140,18 @@ export default function DetailsPage() {
     purposes.length > 0 &&
     (purposes.includes('Other') ? otherPurpose.trim() : true)
 
-  // FIXED: Exact structure required — prevents hard browser refresh and guarantees redirect
+  /**
+   * FIXED: Onboarding redirect loop — sync auth state BEFORE navigation, selective storage wipe
+   * - e.preventDefault() prevents hard browser refresh that wipes React state
+   * - Mark profile complete in global context FIRST so ProtectedRoute doesn't bounce back
+   * - Selectively remove only form draft keys (NOT sessionStorage.clear() which destroys Supabase auth tokens)
+   * - navigate with replace:true bypasses history
+   */
   const handleSave = async (e) => {
-    e.preventDefault(); // CRITICAL: Must be the very first line
-    setSaving(true); // Assuming you have a loading state
-
+    e.preventDefault();
+    setSaving(true);
+    
     try {
-      // 1. Await your context/auth save logic here
       if (!user) throw new Error('No active session')
       const fullName = `${firstName.trim()} ${lastName.trim()}`.trim()
       const role = urlRole || 'student'
@@ -173,7 +178,7 @@ export default function DetailsPage() {
         phone_verified: phoneVerified,
       }
 
-      // Save to backend — try full record, fallback to minimal to avoid getting stuck
+      // Save profile — fallback to minimal to avoid getting stuck
       let { error: upsertError } = await supabase.from('profiles').upsert([profileData])
       if (upsertError) {
         const minimal = {
@@ -187,18 +192,38 @@ export default function DetailsPage() {
         await supabase.from('profiles').upsert([minimal])
       }
 
-      // Update auth context so ProtectedRoute sees complete profile
-      setProfile({ id: user.id, email: user.email, full_name: fullName, role })
-      setStatus('ready')
+      // 1. Mark profile as complete in global context FIRST
+      // This prevents Dashboard (protected route checking profileCompleted) from bouncing user back
+      const newProfile = { id: user.id, email: user.email, full_name: fullName, role }
+      if (typeof completeUserProfile === 'function') {
+        await completeUserProfile(newProfile); // Updates the local React Context
+      } else {
+        // Fallback if completeUserProfile not yet provided by context
+        setProfile(newProfile)
+        setStatus('ready')
+        await new Promise((r) => setTimeout(r, 0))
+      }
 
-      // 2. Clear the persistence cache so it doesn't leak into new sessions
-      sessionStorage.clear();
+      // 2. Selectively clear form drafts ONLY — DO NOT use sessionStorage.clear() (destroys Supabase auth tokens)
+      sessionStorage.removeItem('internx_draft_profile');
+      sessionStorage.removeItem('internx_details_form');
+      sessionStorage.removeItem('internx_otp_email');
+      sessionStorage.removeItem('internx_otp_phone');
+      sessionStorage.removeItem('internx_otp_step_email');
+      sessionStorage.removeItem('internx_otp_step_tel');
+      sessionStorage.removeItem('internx_otp_verified_email');
+      sessionStorage.removeItem('internx_otp_verified_tel');
+      sessionStorage.removeItem('internx_otp_code_email');
+      sessionStorage.removeItem('internx_otp_code_tel');
+      sessionStorage.removeItem('internx_otp_countdown_end_email');
+      sessionStorage.removeItem('internx_otp_countdown_end_tel');
 
-      // 3. Force the redirect
+      // 3. Use React Router to navigate, bypassing history
       navigate('/dashboard', { replace: true });
+      
     } catch (error) {
-      console.error("Save failed", error);
-      setError(error?.message || 'Something went wrong while saving. Please try again.')
+      console.error("Save failed:", error);
+      setError(error?.message || 'Save failed — please try again.')
     } finally {
       setSaving(false);
     }
