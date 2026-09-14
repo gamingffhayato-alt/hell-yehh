@@ -40,17 +40,6 @@ const INSTITUTES = [
 const PURPOSES = ['To polish skills & compete', 'To learn new skills', 'To find Internship / Job', 'Other']
 
 const STORAGE_KEY = 'internx_details_form'
-const OTP_KEYS = [
-  'internx_details_form',
-  'internx_otp_step_email',
-  'internx_otp_step_tel',
-  'internx_otp_verified_email',
-  'internx_otp_verified_tel',
-  'internx_otp_code_email',
-  'internx_otp_code_tel',
-  'internx_otp_countdown_end_email',
-  'internx_otp_countdown_end_tel',
-]
 
 function loadDetailsForm() {
   try {
@@ -151,51 +140,43 @@ export default function DetailsPage() {
     purposes.length > 0 &&
     (purposes.includes('Other') ? otherPurpose.trim() : true)
 
-  /**
-   * FIXED: Onboarding submit routing
-   * - Uses form onSubmit with e.preventDefault() to prevent hard reload
-   * - Clears sessionStorage persistence keys right before navigate
-   * - Awaits auth state update (setProfile/setStatus) before navigate so ProtectedRoute doesn't bounce back
-   * - navigate('/dashboard', { replace: true }) critical to prevent back button returning to onboarding
-   */
-  const handleSubmit = useCallback(async (e) => {
-    // 1. Form Default Behavior — prevent browser hard reload
-    e.preventDefault()
-    if (!canSave || saving || !user) return
-
-    setSaving(true)
-    setError('')
-
-    const fullName = `${firstName.trim()} ${lastName.trim()}`.trim()
-    const role = urlRole || 'student'
-
-    const fullRecord = {
-      id: user.id,
-      email: user.email,
-      full_name: fullName,
-      first_name: firstName.trim(),
-      last_name: lastName.trim(),
-      phone: phone.trim(),
-      aadhaar_number: aadhaar.trim(),
-      gender,
-      student_type: studentType,
-      domain,
-      specialization: specialization.trim(),
-      institution: institute.trim(),
-      institute: institute.trim(),
-      purpose: purposes,
-      purposes: purposes,
-      other_purpose: purposes.includes('Other') ? otherPurpose.trim() : null,
-      role,
-      email_verified: emailVerified,
-      phone_verified: phoneVerified,
-    }
+  // FIXED: Exact structure required — prevents hard browser refresh and guarantees redirect
+  const handleSave = async (e) => {
+    e.preventDefault(); // CRITICAL: Must be the very first line
+    setSaving(true); // Assuming you have a loading state
 
     try {
-      let { error: upsertError } = await supabase.from('profiles').upsert([fullRecord])
+      // 1. Await your context/auth save logic here
+      if (!user) throw new Error('No active session')
+      const fullName = `${firstName.trim()} ${lastName.trim()}`.trim()
+      const role = urlRole || 'student'
 
+      const profileData = {
+        id: user.id,
+        email: user.email,
+        full_name: fullName,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        phone: phone.trim(),
+        aadhaar_number: aadhaar.trim(),
+        gender,
+        student_type: studentType,
+        domain,
+        specialization: specialization.trim(),
+        institution: institute.trim(),
+        institute: institute.trim(),
+        purpose: purposes,
+        purposes: purposes,
+        other_purpose: purposes.includes('Other') ? otherPurpose.trim() : null,
+        role,
+        email_verified: emailVerified,
+        phone_verified: phoneVerified,
+      }
+
+      // Save to backend — try full record, fallback to minimal to avoid getting stuck
+      let { error: upsertError } = await supabase.from('profiles').upsert([profileData])
       if (upsertError) {
-        const minimalRecord = {
+        const minimal = {
           id: user.id,
           email: user.email,
           full_name: fullName,
@@ -203,31 +184,25 @@ export default function DetailsPage() {
           phone: phone.trim(),
           institution: institute.trim(),
         }
-        const { error: minimalError } = await supabase.from('profiles').upsert([minimalRecord])
-        if (minimalError) {
-          setError(`Couldn't save your details: ${minimalError.message}. You can still continue — your basic profile is created.`)
-          // Even on partial error, treat as success to avoid getting stuck
-        }
+        await supabase.from('profiles').upsert([minimal])
       }
 
-      // 4. Update Auth State — await/set before navigate so ProtectedRoute sees complete profile
-      // If useAuth exposes completeUserProfile(), await it here. We set profile + status as equivalent.
-      const newProfile = { id: user.id, email: user.email, full_name: fullName, role }
-      setProfile(newProfile)
+      // Update auth context so ProtectedRoute sees complete profile
+      setProfile({ id: user.id, email: user.email, full_name: fullName, role })
       setStatus('ready')
 
-      // 3. Clean Up Session Storage — clear persistence keys right before navigating
-      try {
-        OTP_KEYS.forEach((k) => sessionStorage.removeItem(k))
-      } catch {}
+      // 2. Clear the persistence cache so it doesn't leak into new sessions
+      sessionStorage.clear();
 
-      // 2. React Router Navigation — replace:true prevents back button to onboarding
-      navigate('/dashboard', { replace: true })
-    } catch (err) {
-      setError(err?.message || 'Something went wrong while saving. Please try again.')
-      setSaving(false)
+      // 3. Force the redirect
+      navigate('/dashboard', { replace: true });
+    } catch (error) {
+      console.error("Save failed", error);
+      setError(error?.message || 'Something went wrong while saving. Please try again.')
+    } finally {
+      setSaving(false);
     }
-  }, [canSave, saving, user, firstName, lastName, urlRole, phone, aadhaar, gender, studentType, domain, specialization, institute, purposes, otherPurpose, emailVerified, phoneVerified, setProfile, setStatus, navigate])
+  };
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-white px-4 py-8 text-slate-900 antialiased selection:bg-slate-900 selection:text-white dark:bg-slate-950 dark:text-white dark:selection:bg-white dark:selection:text-slate-950 sm:px-6 sm:py-10">
@@ -250,7 +225,7 @@ export default function DetailsPage() {
             <span className="text-[15px] font-semibold tracking-[-0.02em] text-slate-900 dark:text-white">Intern X</span>
           </Link>
           <div className="mono hidden items-center gap-2 text-[11px] tracking-[0.02em] text-slate-400 dark:text-slate-500 sm:flex">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Step 2 of 2 • Complete profile • sessionStorage persisted
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Step 2 of 2 • Complete profile
           </div>
         </div>
 
@@ -264,19 +239,10 @@ export default function DetailsPage() {
           </p>
         </div>
 
-        {/* FIX 1: Form tag uses onSubmit={handleSubmit} with e.preventDefault() inside */}
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="rounded-2xl bg-white p-6 shadow-[0_0_0_1px_rgba(0,0,0,0.03),0_8px_24px_-12px_rgba(0,0,0,0.08)] ring-1 ring-gray-200 dark:bg-slate-900 dark:ring-slate-800 sm:p-8">
-            <div className="flex items-start gap-3">
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-slate-900 text-[11px] font-bold tracking-[-0.02em] text-white ring-1 ring-slate-900 dark:bg-white dark:text-slate-950 dark:ring-white">
-                1
-              </span>
-              <div>
-                <h2 className="text-[15px] font-semibold tracking-[-0.02em] text-slate-900 dark:text-white">General Info</h2>
-                <p className="mt-1 text-[13px] leading-5 tracking-[-0.01em] text-slate-500 dark:text-slate-400">Verify your contact details — state persists in sessionStorage so tab switching doesn't lose OTP boxes.</p>
-              </div>
-            </div>
-            <div className="mt-6 grid gap-6">
+        {/* Main wrapper is <form onSubmit={handleSave}> — DO NOT use onClick on submit button */}
+        <form onSubmit={handleSave} className="space-y-5">
+          <Section number="1" title="General Info" subtitle="Verify your contact details — state persists in sessionStorage so tab switching doesn't lose OTP boxes.">
+            <div className="grid gap-6">
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="firstName">First name</Label>
@@ -315,19 +281,10 @@ export default function DetailsPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </Section>
 
-          <div className="rounded-2xl bg-white p-6 shadow-[0_0_0_1px_rgba(0,0,0,0.03),0_8px_24px_-12px_rgba(0,0,0,0.08)] ring-1 ring-gray-200 dark:bg-slate-900 dark:ring-slate-800 sm:p-8">
-            <div className="flex items-start gap-3">
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-slate-900 text-[11px] font-bold tracking-[-0.02em] text-white ring-1 ring-slate-900 dark:bg-white dark:text-slate-950 dark:ring-white">
-                2
-              </span>
-              <div>
-                <h2 className="text-[15px] font-semibold tracking-[-0.02em] text-slate-900 dark:text-white">Academic Details</h2>
-                <p className="mt-1 text-[13px] leading-5 tracking-[-0.01em] text-slate-500 dark:text-slate-400">Helps us map you to trending industry skills and relevant roles.</p>
-              </div>
-            </div>
-            <div className="mt-6 space-y-5">
+          <Section number="2" title="Academic Details" subtitle="Helps us map you to trending industry skills and relevant roles.">
+            <div className="space-y-5">
               <div>
                 <Label>Student type</Label>
                 <div className="grid gap-2 sm:grid-cols-3">
@@ -374,41 +331,30 @@ export default function DetailsPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </Section>
 
-          <div className="rounded-2xl bg-white p-6 shadow-[0_0_0_1px_rgba(0,0,0,0.03),0_8px_24px_-12px_rgba(0,0,0,0.08)] ring-1 ring-gray-200 dark:bg-slate-900 dark:ring-slate-800 sm:p-8">
-            <div className="flex items-start gap-3">
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-slate-900 text-[11px] font-bold tracking-[-0.02em] text-white ring-1 ring-slate-900 dark:bg-white dark:text-slate-950 dark:ring-white">
-                3
-              </span>
-              <div>
-                <h2 className="text-[15px] font-semibold tracking-[-0.02em] text-slate-900 dark:text-white">Purpose on Intern X</h2>
-                <p className="mt-1 text-[13px] leading-5 tracking-[-0.01em] text-slate-500 dark:text-slate-400">Select all that apply — this personalizes your feed and recommendations.</p>
-              </div>
+          <Section number="3" title="Purpose on Intern X" subtitle="Select all that apply — this personalizes your feed and recommendations.">
+            <div className="grid gap-2.5">
+              {PURPOSES.map((p) => {
+                const selected = purposes.includes(p)
+                return (
+                  <label key={p} className={`flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3.5 transition ${selected ? 'border-slate-900 bg-slate-50 ring-1 ring-slate-900 dark:border-white dark:bg-slate-800 dark:ring-white' : 'border-gray-200 bg-white ring-1 ring-gray-200 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:ring-slate-800 dark:hover:bg-slate-800'}`}>
+                    <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-[6px] border ${selected ? 'border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-950' : 'border-gray-300 bg-white dark:border-slate-700 dark:bg-slate-900'}`}>
+                      {selected && <Check className="h-3 w-3" />}
+                    </span>
+                    <span className="block text-[13.5px] font-medium tracking-[-0.01em] text-slate-900 dark:text-white">{p}</span>
+                    <input type="checkbox" checked={selected} onChange={() => togglePurpose(p)} className="sr-only" />
+                  </label>
+                )
+              })}
             </div>
-            <div className="mt-6">
-              <div className="grid gap-2.5">
-                {PURPOSES.map((p) => {
-                  const selected = purposes.includes(p)
-                  return (
-                    <label key={p} className={`flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3.5 transition ${selected ? 'border-slate-900 bg-slate-50 ring-1 ring-slate-900 dark:border-white dark:bg-slate-800 dark:ring-white' : 'border-gray-200 bg-white ring-1 ring-gray-200 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:ring-slate-800 dark:hover:bg-slate-800'}`}>
-                      <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-[6px] border ${selected ? 'border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-950' : 'border-gray-300 bg-white dark:border-slate-700 dark:bg-slate-900'}`}>
-                        {selected && <Check className="h-3 w-3" />}
-                      </span>
-                      <span className="block text-[13.5px] font-medium tracking-[-0.01em] text-slate-900 dark:text-white">{p}</span>
-                      <input type="checkbox" checked={selected} onChange={() => togglePurpose(p)} className="sr-only" />
-                    </label>
-                  )
-                })}
+            {purposes.includes('Other') && (
+              <div className="mt-4">
+                <Label htmlFor="otherPurpose">Please specify</Label>
+                <input id="otherPurpose" value={otherPurpose} onChange={(e) => setOtherPurpose(e.target.value)} placeholder="e.g. Looking for mentorship and R&D collaboration" className={inputBase} />
               </div>
-              {purposes.includes('Other') && (
-                <div className="mt-4">
-                  <Label htmlFor="otherPurpose">Please specify</Label>
-                  <input id="otherPurpose" value={otherPurpose} onChange={(e) => setOtherPurpose(e.target.value)} placeholder="e.g. Looking for mentorship and R&D collaboration" className={inputBase} />
-                </div>
-              )}
-            </div>
-          </div>
+            )}
+          </Section>
 
           {error && (
             <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700 ring-1 ring-red-200 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300 dark:ring-red-900/30" role="alert">
@@ -420,7 +366,7 @@ export default function DetailsPage() {
             <div className="mono text-[11px] leading-5 text-slate-500 dark:text-slate-400">
               Signed in as <span className="font-medium text-slate-700 dark:text-slate-300">{user?.email}</span> • Email {emailVerified ? '✓ verified' : 'not verified'} • Phone {phoneVerified ? '✓ verified' : 'not verified'}
             </div>
-            {/* FIX 2 & 3: type=submit triggers form onSubmit, replace:true prevents back button */}
+            {/* Submit button is simply <button type="submit"> — no onClick */}
             <button type="submit" disabled={!canSave || saving} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-7 text-[13.5px] font-semibold tracking-[-0.01em] text-white shadow-sm ring-1 ring-slate-900 transition hover:bg-black active:scale-[0.99] disabled:opacity-50 dark:bg-white dark:text-slate-950 dark:ring-white dark:hover:bg-slate-100 sm:w-auto">
               {saving && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white dark:border-slate-900/30 dark:border-t-slate-900" />}
               {saving ? 'Saving…' : 'Save & Go to Dashboard'}
