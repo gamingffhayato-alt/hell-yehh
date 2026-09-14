@@ -19,7 +19,17 @@ export function FullScreenLoader({ label }) {
   )
 }
 
-const isProfileComplete = (profile) => Boolean(profile?.role)
+/**
+ * FIXED: Profile completion check must be strict
+ * Returns false if role is null, undefined, or empty string
+ * This guarantees status becomes 'needsOnboarding' and routes to /details
+ */
+const isProfileComplete = (profile) => {
+  const role = profile?.role
+  if (role === null || role === undefined) return false
+  if (typeof role === 'string' && role.trim() === '') return false
+  return Boolean(role)
+}
 
 export const homeForRole = (role) => {
   if (role === 'industry') return '/industry-dashboard'
@@ -28,12 +38,16 @@ export const homeForRole = (role) => {
 }
 
 /**
- * Optimized AuthProvider — fixes login lag, tab-switch reset, and onboarding redirect loop
+ * AuthProvider — fixed default role bug
  *
- * - hasLoadedOnceRef ensures FullScreenLoader ONLY on first mount
- * - TOKEN_REFRESHED / USER_UPDATED handled silently (no loading, no nav)
- * - navigateReplace uses { replace: true } to avoid history bloat
- * - completeUserProfile() syncs global state BEFORE navigate, so ProtectedRoute doesn't bounce back
+ * Root cause: When user signed up via email/password, context immediately upserted
+ * profile with role: md.role || 'student'. Since routing considers profile complete
+ * if role exists, app instantly routed to /dashboard and skipped /details wizard.
+ *
+ * Fix:
+ * - Change role assignment to default to null instead of 'student'
+ * - isProfileComplete strictly false for null/undefined/''
+ * - Status becomes 'needsOnboarding' → routes to /details
  */
 export function AuthProvider({ children }) {
   const navigate = useNavigate()
@@ -59,18 +73,13 @@ export function AuthProvider({ children }) {
     [navigate]
   )
 
-  // Critical fix for onboarding redirect loop: mark profile as complete in global context FIRST
-  // Dashboard is protected and checks profileCompleted / status === 'ready' — must update before navigate
   const completeUserProfile = useCallback(
     async (newProfileData = null) => {
-      // If caller passes full profile, use it; otherwise keep existing and just mark ready
       if (newProfileData) {
         setProfile(newProfileData)
-        sessionRef.current = sessionRef.current // keep session
       }
       setStatus('ready')
       statusRef.current = 'ready'
-      // Small tick to let React batch update before navigation
       await new Promise((r) => setTimeout(r, 0))
     },
     []
@@ -129,12 +138,13 @@ export function AuthProvider({ children }) {
 
         const md = nextSession.user.user_metadata || {}
         if (!resolvedProfile && md?.source === 'email_signup') {
+          // FIXED: Default role to null instead of 'student' to prevent premature completion
+          // Previously: role: md.role || 'student' → instantly considered complete → skipped /details
+          // Now: role: md.role || null → isProfileComplete() returns false → needsOnboarding → /details
           const record = {
             id: nextSession.user.id,
             email: nextSession.user.email,
             full_name: md.full_name || null,
-            // Do NOT default role here — leaving it unset keeps isProfileComplete()
-            // false so the user is routed to /details instead of straight to /dashboard.
             role: md.role || null,
           }
           const { error: upsertError } = await supabase.from('profiles').upsert([record])
@@ -193,6 +203,7 @@ export function AuthProvider({ children }) {
           return
         }
 
+        // INITIAL_SESSION — now correctly evaluates to needsOnboarding when role is null
         const nextStatus = complete ? 'ready' : 'needsOnboarding'
         setStatus(nextStatus)
         statusRef.current = nextStatus

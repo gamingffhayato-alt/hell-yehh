@@ -110,7 +110,6 @@ export default function DetailsPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  // Persist to sessionStorage — survives unmount on tab switch
   useEffect(() => {
     try {
       const payload = { firstName, lastName, email, emailVerified, phone, phoneVerified, aadhaar, gender, studentType, domain, specialization, institute, purposes, otherPurpose }
@@ -141,11 +140,12 @@ export default function DetailsPage() {
     (purposes.includes('Other') ? otherPurpose.trim() : true)
 
   /**
-   * FIXED: Onboarding redirect loop — sync auth state BEFORE navigation, selective storage wipe
-   * - e.preventDefault() prevents hard browser refresh that wipes React state
-   * - Mark profile complete in global context FIRST so ProtectedRoute doesn't bounce back
-   * - Selectively remove only form draft keys (NOT sessionStorage.clear() which destroys Supabase auth tokens)
-   * - navigate with replace:true bypasses history
+   * FIXED: Prevent hard refresh, sync auth state BEFORE navigation, selective storage wipe
+   * - e.preventDefault() first line stops browser reload that wipes React state
+   * - Save only valid columns (profiles table has: id, email, full_name, role, institution, course, stream...)
+   * - Mark profile complete in global context FIRST so ProtectedRoute doesn't bounce back to /details
+   * - Selectively remove draft keys only — DO NOT use sessionStorage.clear() (destroys Supabase tokens)
+   * - navigate('/dashboard', { replace: true }) bypasses history
    */
   const handleSave = async (e) => {
     e.preventDefault();
@@ -156,55 +156,42 @@ export default function DetailsPage() {
       const fullName = `${firstName.trim()} ${lastName.trim()}`.trim()
       const role = urlRole || 'student'
 
-      const profileData = {
+      // Only use columns that actually exist in public.profiles (see supabase-setup.sql)
+      // Table: id, email, full_name, role, institution, course, stream, class_year, etc.
+      // Previous bug: tried to upsert phone, aadhaar_number, gender, etc. which don't exist → upsert fails → role never saved → redirect loop
+      const validProfile = {
         id: user.id,
         email: user.email,
         full_name: fullName,
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        phone: phone.trim(),
-        aadhaar_number: aadhaar.trim(),
-        gender,
-        student_type: studentType,
-        domain,
-        specialization: specialization.trim(),
+        role: role,
         institution: institute.trim(),
-        institute: institute.trim(),
-        purpose: purposes,
-        purposes: purposes,
-        other_purpose: purposes.includes('Other') ? otherPurpose.trim() : null,
-        role,
-        email_verified: emailVerified,
-        phone_verified: phoneVerified,
+        course: domain.trim(),
+        stream: specialization.trim(),
       }
 
-      // Save profile — fallback to minimal to avoid getting stuck
-      let { error: upsertError } = await supabase.from('profiles').upsert([profileData])
+      const { error: upsertError } = await supabase.from('profiles').upsert([validProfile])
       if (upsertError) {
-        const minimal = {
+        console.error('profiles upsert failed:', upsertError.message)
+        // Fallback to absolute minimal valid columns
+        await supabase.from('profiles').upsert([{
           id: user.id,
           email: user.email,
           full_name: fullName,
-          role,
-          phone: phone.trim(),
-          institution: institute.trim(),
-        }
-        await supabase.from('profiles').upsert([minimal])
+          role: role,
+        }])
       }
 
       // 1. Mark profile as complete in global context FIRST
-      // This prevents Dashboard (protected route checking profileCompleted) from bouncing user back
-      const newProfile = { id: user.id, email: user.email, full_name: fullName, role }
+      const newProfile = { id: user.id, email: user.email, full_name: fullName, role, institution: institute.trim() }
       if (typeof completeUserProfile === 'function') {
-        await completeUserProfile(newProfile); // Updates the local React Context
+        await completeUserProfile(newProfile);
       } else {
-        // Fallback if completeUserProfile not yet provided by context
         setProfile(newProfile)
         setStatus('ready')
         await new Promise((r) => setTimeout(r, 0))
       }
 
-      // 2. Selectively clear form drafts ONLY — DO NOT use sessionStorage.clear() (destroys Supabase auth tokens)
+      // 2. Selectively clear form drafts ONLY — DO NOT use .clear()
       sessionStorage.removeItem('internx_draft_profile');
       sessionStorage.removeItem('internx_details_form');
       sessionStorage.removeItem('internx_otp_email');
@@ -260,11 +247,10 @@ export default function DetailsPage() {
           </div>
           <h1 className="mt-4 text-[28px] font-bold leading-[1.1] tracking-[-0.03em] text-slate-900 dark:text-white sm:text-[32px]">Complete your profile</h1>
           <p className="mt-2 max-w-[600px] text-[14px] leading-6 tracking-[-0.01em] text-slate-600 dark:text-slate-300">
-            Verify your email and phone with OTP, then finish your profile. Your progress is automatically saved — even if you switch tabs to check your email.
+            Verify your email and phone with OTP, then finish your profile.
           </p>
         </div>
 
-        {/* Main wrapper is <form onSubmit={handleSave}> — DO NOT use onClick on submit button */}
         <form onSubmit={handleSave} className="space-y-5">
           <Section number="1" title="General Info" subtitle="Verify your contact details — state persists in sessionStorage so tab switching doesn't lose OTP boxes.">
             <div className="grid gap-6">
@@ -391,7 +377,6 @@ export default function DetailsPage() {
             <div className="mono text-[11px] leading-5 text-slate-500 dark:text-slate-400">
               Signed in as <span className="font-medium text-slate-700 dark:text-slate-300">{user?.email}</span> • Email {emailVerified ? '✓ verified' : 'not verified'} • Phone {phoneVerified ? '✓ verified' : 'not verified'}
             </div>
-            {/* Submit button is simply <button type="submit"> — no onClick */}
             <button type="submit" disabled={!canSave || saving} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-7 text-[13.5px] font-semibold tracking-[-0.01em] text-white shadow-sm ring-1 ring-slate-900 transition hover:bg-black active:scale-[0.99] disabled:opacity-50 dark:bg-white dark:text-slate-950 dark:ring-white dark:hover:bg-slate-100 sm:w-auto">
               {saving && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white dark:border-slate-900/30 dark:border-t-slate-900" />}
               {saving ? 'Saving…' : 'Save & Go to Dashboard'}
