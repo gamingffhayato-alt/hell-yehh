@@ -178,28 +178,22 @@ export default function WhyInternX() {
                 </div>
               </div>
 
-              {/* Beautiful placeholder image block — ready for image drop */}
+              {/* Campus Visual — Premium Image Applied */}
               <div className="relative">
-                <div className="pointer-events-none absolute -inset-6 -z-10 rounded-[28px] bg-gradient-to-br from-indigo-500/10 via-violet-500/10 to-transparent blur-[30px] dark:from-indigo-500/20 dark:via-violet-500/10" />
+                <div className="pointer-events-none absolute -inset-6 -z-10 rounded-[28px] bg-gradient-to-br from-indigo-500/20 via-violet-500/15 to-transparent blur-[30px] dark:from-indigo-500/30 dark:via-violet-500/15" />
                 <div className="relative overflow-hidden rounded-2xl bg-white p-[1px] ring-1 ring-gray-200 dark:bg-slate-900 dark:ring-slate-800">
-                  <div className="relative overflow-hidden rounded-[15px] bg-slate-50 dark:bg-slate-900">
-                    <div className="relative aspect-[16/11] bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
-                      <div className="pointer-events-none absolute inset-0 opacity-[0.04] dark:opacity-[0.08]" style={{ backgroundImage: `linear-gradient(to right, #000 1px, transparent 1px), linear-gradient(to bottom, #000 1px, transparent 1px)`, backgroundSize: '24px 24px' }} />
-                      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[360px] w-[360px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-500/10 blur-[50px] dark:bg-indigo-500/20" />
-
-                      <div className="relative flex h-full flex-col items-center justify-center p-8 text-center">
-                        <span className="grid h-14 w-14 place-items-center rounded-2xl bg-white text-slate-400 shadow-sm ring-1 ring-gray-200 dark:bg-slate-800 dark:text-slate-500 dark:ring-slate-700">
-                          <ImageIcon className="h-6 w-6" />
-                        </span>
-                        <div className="mt-5">
-                          <div className="text-[13px] font-semibold tracking-[-0.02em] text-slate-900 dark:text-white">Placeholder — drop campus visual here</div>
-                          <div className="mono mt-1 text-[11px] tracking-[-0.01em] text-slate-500 dark:text-slate-400">rounded-2xl bg-slate-50 dark:bg-slate-900 • subtle glow • ready for image</div>
-                        </div>
-                        <div className="mt-6 flex gap-2">
-                          <span className="mono rounded-full bg-white px-2.5 py-1 text-[10px] font-medium tracking-[-0.01em] text-slate-600 ring-1 ring-gray-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700">16:11 • Premium</span>
-                          <span className="mono rounded-full bg-white px-2.5 py-1 text-[10px] font-medium tracking-[-0.01em] text-slate-600 ring-1 ring-gray-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700">No illustration</span>
-                        </div>
-                      </div>
+                  <div className="relative overflow-hidden rounded-[15px] bg-slate-950 dark:bg-slate-900">
+                    <div className="relative aspect-[16/11] overflow-hidden">
+                      <img
+                        src="/campus-visual.png"
+                        alt="Intern X — Students collaborating in modern campus connected to industry skyline, verified ecosystem"
+                        className="h-full w-full object-cover"
+                        loading="eager"
+                      />
+                      {/* Subtle gradient overlay for depth */}
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/50 via-slate-950/5 to-transparent" />
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-transparent" />
+                      <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/10" />
                     </div>
 
                     <div className="flex items-center justify-between border-t border-gray-100 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
