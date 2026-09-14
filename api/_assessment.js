@@ -212,13 +212,19 @@ export async function handleAssessmentGenerate(payload, env) {
       signal: controller.signal,
       body: JSON.stringify({
         model,
-        temperature: 0.7,
+        temperature: 0.85,
         max_tokens: 3000,
         response_format: { type: 'json_object' },
         reasoning_effort: 'low',
         messages: [
           { role: 'system', content: GENERATE_SYSTEM },
-          { role: 'user', content: `Generate assessment. Focus topic: ${topic}. Return ONLY JSON.` },
+          { 
+            role: 'user', 
+            content: `Generate assessment. Focus topic: ${topic}. 
+    CRITICAL: Ensure these questions are completely unique and randomized for this specific test run (Random Seed: ${Date.now()} - ${Math.random()}). 
+    Do NOT output the standard "Two Sum", "LRU Cache", "Debounce", or "Valid Parentheses" unless they are heavily modified. Pick unique, less common problem scenarios.
+    Return ONLY JSON.` 
+          },
         ],
       }),
     })
