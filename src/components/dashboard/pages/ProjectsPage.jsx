@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import DashboardShell from '../DashboardShell'
+import BackButton from '../../BackButton'
 
 const DEMO = [
   { id: 'p1', title: 'JARVIS — Telegram Edu Bot', desc: 'AI study assistant answering DSA queries on Telegram. 200+ queries week one.', tags: ['Grok API', 'Python', 'Telegram'], live: 'https://t.me/jarvis01educationbot', code: 'https://github.com', featured: true },
@@ -39,6 +40,7 @@ export default function ProjectsPage() {
   return (
     <DashboardShell activeMain="profile" activeSub="projects" title={`Projects · ${projects.length} demo seeded`}>
       <div className="max-w-[1100px] space-y-5">
+        <BackButton />
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="mono text-[11px] text-slate-500">Each card has Add/Edit + live link + codebase link — full add/edit functionality.</p>
           <button onClick={openAdd} className="rounded-full bg-slate-900 px-4 py-2 text-[11px] font-semibold text-white dark:bg-white dark:text-slate-900">+ Add project</button>

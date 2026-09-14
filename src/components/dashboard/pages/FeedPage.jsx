@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useMemo } from 'react'
 import DashboardShell from '../DashboardShell'
+import BackButton from '../../BackButton'
 
 const FILTERS = ['All', 'Internships', 'Jobs', 'Trending Skills → Courses']
 
@@ -31,6 +32,7 @@ export default function FeedPage() {
   return (
     <DashboardShell activeMain="market" activeSub="feed" title="Personalized Feed">
       <div className="max-w-[760px] space-y-5">
+        <BackButton />
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[220px]">
             <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search feed — try @username for profile lookup" className="h-10 w-full rounded-full border border-slate-200 bg-white pl-4 pr-4 text-[12px] placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-white" />

@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import DashboardShell from '../DashboardShell'
+import BackButton from '../../BackButton'
 
 const INITIAL_COLS = [
   { key: 'Applied', items: [
@@ -38,6 +39,7 @@ export default function ApplicationsPage() {
   return (
     <DashboardShell activeMain="market" activeSub="applications" title="Applications · Tracker">
       <div className="max-w-[1100px] space-y-5">
+        <BackButton />
         <p className="mono text-[11px] text-slate-500">Kanban-style tracker — Applied / Shortlisted / Interviewing. Real profile data feeds completion %.</p>
         <div className="grid gap-4 md:grid-cols-3">
           {cols.map(col => (

@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
+import BackButton from './BackButton'
 
 /* Icons */
 function UserIcon(props) {
@@ -251,12 +252,15 @@ export default function ProfilePage() {
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/80 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/80">
         <div className="mx-auto flex h-[64px] max-w-[1280px] items-center justify-between px-6">
-          <Link to="/" className="flex items-center gap-2.5">
-            <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-slate-900 text-white ring-1 ring-slate-900 dark:bg-white dark:text-slate-950 dark:ring-white">
-              <span className="text-[11px] font-bold tracking-[-0.02em]">IX</span>
-            </span>
-            <span className="text-[15px] font-semibold tracking-[-0.02em] text-slate-900 dark:text-white">Intern X</span>
-          </Link>
+          <div className="flex items-center gap-3">
+            <BackButton variant="circle" />
+            <Link to="/" className="flex items-center gap-2.5">
+              <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-slate-900 text-white ring-1 ring-slate-900 dark:bg-white dark:text-slate-950 dark:ring-white">
+                <span className="text-[11px] font-bold tracking-[-0.02em]">IX</span>
+              </span>
+              <span className="text-[15px] font-semibold tracking-[-0.02em] text-slate-900 dark:text-white">Intern X</span>
+            </Link>
+          </div>
           <div className="flex items-center gap-3">
             <Link to="/dashboard" className="inline-flex h-9 items-center justify-center rounded-full bg-white px-4 text-[13px] font-medium tracking-[-0.01em] text-slate-700 ring-1 ring-gray-200 transition hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-800 dark:hover:bg-slate-800">
               Dashboard

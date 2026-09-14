@@ -8,6 +8,7 @@ import {
   ArrowRightIcon, ExternalIcon, PlusIcon, RocketIcon,
   ChartBarIcon, BookIcon, FlameIcon
 } from '../Icons'
+import BackButton from '../BackButton'
 
 /* ---------- Types & Data ---------- */
 const INITIAL_JOBS = [
@@ -286,6 +287,7 @@ export default function StudentDashboard() {
           {/* Top bar — search uses username for lookup */}
           <header className="sticky top-0 z-30 border-b border-slate-200/60 bg-white/80 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/80">
             <div className="flex h-[64px] items-center gap-4 px-6 sm:px-8">
+              {(activeMain !== 'dashboard' || activeSub !== 'overview') && <BackButton variant="circle" />}
               <form onSubmit={handleSearch} className="relative flex-1 max-w-[520px]">
                 <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input value={query} onChange={e => setQuery(e.target.value)} placeholder={`Search — try @${username || 'username'} for profile lookup, or jobs, skills...`} className="h-10 w-full rounded-full border border-slate-200 bg-slate-50 pl-10 pr-4 text-[13px] tracking-[-0.01em] placeholder:text-slate-400 focus:border-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:border-slate-800 dark:bg-slate-900 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-white" />

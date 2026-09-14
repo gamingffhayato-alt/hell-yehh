@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import DashboardShell from '../DashboardShell'
+import BackButton from '../../BackButton'
 
 const TRENDING_2026 = [
   { id: 's1', name: 'Generative AI Engineering', employability: 92, growth: '+34%', jobs: 1240, color: 'bg-violet-600', icon: '◐', desc: 'Building with LLMs, RAG, agents — top hiring in 2026.' },
@@ -55,6 +56,7 @@ export default function TrendingSkillsPage() {
   return (
     <DashboardShell activeMain="market" activeSub="trending" title="Trending Skills · 2026 market data">
       <div className="max-w-[1200px] space-y-6">
+        <BackButton />
         <p className="mono max-w-[640px] text-[11px] leading-5 text-slate-500">Employability rate per skill based on 12k+ JDs scraped Q4 2025–Q1 2026, growth vs 2024, demo job listings per skill. Not marketing fluff — filtered for engineering internships.</p>
 
         <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">

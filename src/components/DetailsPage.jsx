@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import OtpVerificationField from './OtpVerificationField'
+import BackButton from './BackButton'
 
 function ArrowRight(props) {
   return (
@@ -229,6 +230,12 @@ export default function DetailsPage() {
       <div className="pointer-events-none absolute -bottom-32 -right-32 h-[500px] w-[500px] rounded-full bg-violet-500/10 blur-[80px] dark:bg-violet-500/15" />
 
       <div className="relative mx-auto w-full max-w-[840px]">
+        <div className="mb-6 flex items-center gap-3">
+          <BackButton />
+          <div className="mono hidden items-center gap-2 text-[11px] tracking-[0.02em] text-slate-400 dark:text-slate-500 sm:flex">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Step 2 of 2 • Complete profile
+          </div>
+        </div>
         <div className="mb-8 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5">
             <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-slate-900 text-white ring-1 ring-slate-900 dark:bg-white dark:text-slate-950 dark:ring-white">

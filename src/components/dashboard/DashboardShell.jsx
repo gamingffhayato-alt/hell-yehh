@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
+import BackButton from '../BackButton'
 
 export default function DashboardShell({ activeMain: initialMain = 'dashboard', activeSub: initialSub = 'overview', children, title }) {
   const { session, profile } = useAuth()
@@ -178,9 +179,12 @@ export default function DashboardShell({ activeMain: initialMain = 'dashboard', 
         <main className="min-w-0 flex-1">
           <header className="sticky top-0 z-30 border-b border-slate-200/60 bg-white/80 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/80">
             <div className="flex h-[64px] items-center gap-4 px-6 sm:px-8">
-              <div className="flex items-center gap-2">
-                <span className="text-[12px] font-semibold tracking-[-0.01em]">{name}</span>
-                <span className="mono text-[10px] text-slate-500">@{username || 'handle'} · {email.split('@')[0]}</span>
+              <div className="flex items-center gap-3">
+                {(activeMain !== 'dashboard' || activeSub !== 'overview') && <BackButton variant="circle" />}
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] font-semibold tracking-[-0.01em]">{name}</span>
+                  <span className="mono text-[10px] text-slate-500">@{username || 'handle'} · {email.split('@')[0]}</span>
+                </div>
               </div>
               <div className="ml-auto flex items-center gap-3">
                 <Link to="/dashboard" className="mono rounded-full bg-slate-900 px-3 py-1.5 text-[11px] text-white dark:bg-white dark:text-slate-900">Dashboard</Link>

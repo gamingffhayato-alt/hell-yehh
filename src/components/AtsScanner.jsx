@@ -8,6 +8,7 @@ import {
   SparklesIcon,
   XIcon,
 } from './Icons'
+import BackButton from './BackButton'
 
 /* Vite bundles the pdf.js worker as a static asset */
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -17,23 +18,41 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 
 const MAX_BYTES = 5 * 1024 * 1024 // 5 MB hard cap
 const MAX_PAGES = 8
-const MAX_CHARS = 4500
+const MAX_CHARS = 6500
 const ROLES = ['Frontend Developer', 'Backend Engineer', 'Data Analyst', 'Custom Role']
 const STAGES = [
   'Extracting text from your PDF…',
+  'Scanning CV with Groq…',
   'Comparing ATS keywords…',
-  'Calculating impact score…',
   'Finalizing recruiter report…',
 ]
 
-const scoreColor = (s) => (s > 80 ? '#16a34a' : s >= 60 ? '#d97706' : '#e11d48')
-const verdictTone = {
-  Pass: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
-  'Needs Work': 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
-  Fail: 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300',
+/* --- Groq Config --- */
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
+const GROQ_MODEL = 'llama3-8b-8192' // fast, per task spec
+
+const SYSTEM_PROMPT = `You are an expert ATS (Applicant Tracking System) CV analyzer. Compare the provided CV text against the target Job Description (or general industry standards if none provided). You MUST output your response EXACTLY in this format, with no conversational filler before or after:
+
+### 1. Keyword Analysis
+**Present Keywords:** [comma-separated list of matched skills/keywords]
+**Missing Keywords:** [comma-separated list of missing skills/keywords]
+
+### 2. Detailed Feedback
+[Write exactly 5 to 6 lines describing specific mistakes, formatting errors, and missing skills in the CV. Be direct, constructive, and actionable.]`
+
+function getGroqKey() {
+  // Vite client env — primary
+  const viteKey = import.meta.env?.VITE_GROQ_API_KEY
+  if (viteKey) return viteKey
+  // Fallback: VITE_ prefixed ASS_KEY or GROQ key, and process.env for Vercel compat
+  const fallback =
+    import.meta.env?.VITE_ASS_KEY ||
+    import.meta.env?.VITE_AI_API_KEY ||
+    (typeof process !== 'undefined' ? process.env?.GROQ_API_KEY || process.env?.ASS_KEY || process.env?.AI_API_KEY : '')
+  return fallback || ''
 }
 
-/** Extract plain text in-browser — only a few KB travel to the API. */
+/** Extract plain text in-browser — only a few KB travel to Groq. */
 async function extractPdfText(file) {
   const buf = await file.arrayBuffer()
   const doc = await pdfjsLib.getDocument({ data: buf }).promise
@@ -47,34 +66,6 @@ async function extractPdfText(file) {
   return text.replace(/\s+/g, ' ').trim().slice(0, MAX_CHARS)
 }
 
-/** Circular score gauge — hand-rolled SVG, no chart library. */
-function ScoreGauge({ score }) {
-  const r = 52
-  const C = 2 * Math.PI * r
-  const color = scoreColor(score)
-  return (
-    <div className="relative h-36 w-36">
-      <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
-        <circle cx="60" cy="60" r={r} fill="none" strokeWidth="10" className="stroke-gray-200 dark:stroke-slate-700" />
-        <circle
-          cx="60" cy="60" r={r} fill="none"
-          stroke={color} strokeWidth="10" strokeLinecap="round"
-          strokeDasharray={C} strokeDashoffset={C - (score / 100) * C}
-          className="transition-all duration-700 ease-out"
-        />
-      </svg>
-      <div className="absolute inset-0 grid place-items-center text-center">
-        <div>
-          <p className="text-3xl font-extrabold tracking-tight" style={{ color }}>
-            {score}
-          </p>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">/ 100</p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function Kbd({ children, tone }) {
   return (
     <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${tone}`}>
@@ -83,10 +74,10 @@ function Kbd({ children, tone }) {
   )
 }
 
-function AnalysisCard({ title, tone, children, defaultOpen = false }) {
-  const [open, setOpen] = useState(defaultOpen || title === 'Formatting & ATS Readability')
+function AnalysisCard({ title, tone, children, defaultOpen = true }) {
+  const [open, setOpen] = useState(defaultOpen)
   return (
-    <div className="rounded-2xl border border-gray-200 dark:border-slate-700">
+    <div className="rounded-2xl border border-gray-200 bg-white dark:border-slate-800 dark:bg-slate-900">
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center gap-2.5 rounded-2xl px-4 py-3 text-left transition hover:bg-gray-50 dark:hover:bg-slate-800/60"
@@ -97,9 +88,54 @@ function AnalysisCard({ title, tone, children, defaultOpen = false }) {
           className={`ml-auto h-4 w-4 text-gray-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
         />
       </button>
-      {open && <div className="border-t border-gray-100 px-4 pb-4 pt-3 dark:border-slate-700/60">{children}</div>}
+      {open && <div className="border-t border-gray-100 px-4 pb-4 pt-3 dark:border-slate-800">{children}</div>}
     </div>
   )
+}
+
+function parseGroqResponse(raw) {
+  if (!raw) return { present: [], missing: [], feedback: '', sections: [] }
+
+  // Split by ### to map to custom UI cards
+  const sections = raw
+    .split(/###\s*/g)
+    .map((s) => s.trim())
+    .filter(Boolean)
+
+  let present = []
+  let missing = []
+  let feedback = ''
+
+  // Extract Present Keywords
+  const presentMatch = raw.match(/\*\*Present Keywords:\*\*\s*([^\n]+)/i)
+  if (presentMatch) {
+    present = presentMatch[1]
+      .split(',')
+      .map((k) => k.trim().replace(/^\[|\]$/g, '').trim())
+      .filter(Boolean)
+  }
+
+  // Extract Missing Keywords
+  const missingMatch = raw.match(/\*\*Missing Keywords:\*\*\s*([^\n]+)/i)
+  if (missingMatch) {
+    missing = missingMatch[1]
+      .split(',')
+      .map((k) => k.trim().replace(/^\[|\]$/g, '').trim())
+      .filter(Boolean)
+  }
+
+  // Extract Detailed Feedback — after ### 2. Detailed Feedback
+  const feedbackMatch = raw.split(/###\s*2\. Detailed Feedback/i)[1]
+  if (feedbackMatch) {
+    feedback = feedbackMatch.trim()
+  } else {
+    // fallback: last section
+    feedback = sections[sections.length - 1] || ''
+    // clean first line if it still contains keyword lines
+    feedback = feedback.replace(/\*\*Present Keywords:\*\*.*\n?/i, '').replace(/\*\*Missing Keywords:\*\*.*\n?/i, '').trim()
+  }
+
+  return { present, missing, feedback, sections, raw }
 }
 
 export default function AtsScanner({ notify }) {
@@ -110,7 +146,9 @@ export default function AtsScanner({ notify }) {
   const [stage, setStage] = useState('idle') // idle | scanning | done
   const [stageIdx, setStageIdx] = useState(0)
   const [progress, setProgress] = useState(0)
-  const [result, setResult] = useState(null)
+  const [groqText, setGroqText] = useState('') // raw Groq output
+  const [parsed, setParsed] = useState(null)
+  const [error, setError] = useState('')
   const timers = useRef([])
 
   const effectiveRole = role === 'Custom Role' ? customRole.trim() || 'General Role' : role
@@ -125,9 +163,11 @@ export default function AtsScanner({ notify }) {
   const acceptFile = (f) => {
     if (!f) return
     const isPdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name)
-    if (!isPdf) return notify('Only PDF resumes are supported — export yours as PDF first')
-    if (f.size > MAX_BYTES) return notify('That PDF is over 5 MB — compress it and try again')
-    setResult(null)
+    if (!isPdf) return notify?.('Only PDF resumes are supported — export yours as PDF first')
+    if (f.size > MAX_BYTES) return notify?.('That PDF is over 5 MB — compress it and try again')
+    setGroqText('')
+    setParsed(null)
+    setError('')
     setStage('idle')
     setFile(f)
     setProgress(0)
@@ -135,126 +175,183 @@ export default function AtsScanner({ notify }) {
 
   const startScan = async () => {
     if (!file || stage === 'scanning') return
-    if (role === 'Custom Role' && !customRole.trim()) return notify('Type your custom target role first')
+    if (role === 'Custom Role' && !customRole.trim()) return notify?.('Type your custom target role first')
+
+    const GROQ_KEY = getGroqKey()
+    if (!GROQ_KEY) {
+      setError('Groq API key missing — set VITE_GROQ_API_KEY in .env.local (Vite) or GROQ_API_KEY/ASS_KEY server env.')
+      notify?.('Missing VITE_GROQ_API_KEY — check .env.local')
+      return
+    }
 
     setStage('scanning')
     setStageIdx(0)
-    setProgress(3)
+    setProgress(6)
+    setGroqText('')
+    setParsed(null)
+    setError('')
 
-    // Rotating stage labels + smooth progress to 92% while waiting on the API
-    timers.current.push(setInterval(() => setStageIdx((i) => (i + 1) % STAGES.length), 1300))
+    // Rotating stage labels + smooth progress to 92% while waiting on Groq
+    timers.current.push(setInterval(() => setStageIdx((i) => (i + 1) % STAGES.length), 1200))
     timers.current.push(
-      setInterval(() => setProgress((p) => (p < 92 ? p + Math.random() * 4.5 : p)), 300),
+      setInterval(() => setProgress((p) => (p < 88 ? p + Math.random() * 4 : p)), 280),
     )
 
     try {
-      const text = await extractPdfText(file)
-      if (text.length < 80) {
+      const cvText = await extractPdfText(file)
+      if (cvText.length < 80) {
         clearTimers()
         setStage('idle')
         setProgress(0)
-        return notify('Could not read text from that PDF — it may be a scanned image. Export from Word/Docs as a text PDF.')
+        return notify?.('Could not read text from that PDF — it may be a scanned image. Export from Word/Docs as a text PDF.')
       }
 
-      // PDF-extraction sanity log — if this prints empty/undefined, pdfjs failed locally
-      console.log('Extracted Text:', text)
-      console.log('Extracted length:', text.length, 'chars → target role:', effectiveRole)
+      console.log('Extracted CV length:', cvText.length, 'chars → target role:', effectiveRole)
 
-      const res = await fetch('/api/ats-analyze', {
+      // Build messages per spec — system prompt enforces exact format
+      const messages = [
+        { role: 'system', content: SYSTEM_PROMPT },
+        {
+          role: 'user',
+          content: `Target Job Role / Job Description: ${effectiveRole}\n\nCV Text:\n${cvText}\n\nAnalyze per the required format exactly.`,
+        },
+      ]
+
+      const res = await fetch(GROQ_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: AbortSignal.timeout(25000),
-        body: JSON.stringify({ resumeText: text, targetRole: effectiveRole }),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${GROQ_KEY}`,
+        },
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          temperature: 0.3,
+          max_tokens: 1200,
+          messages,
+        }),
       })
-      if (!res.ok) throw new Error(`scan failed (${res.status})`)
+
+      if (!res.ok) {
+        const errTxt = await res.text().catch(() => '')
+        throw new Error(`Groq HTTP ${res.status}: ${errTxt.slice(0, 400)}`)
+      }
+
       const data = await res.json()
+      const content = data?.choices?.[0]?.message?.content?.trim() || ''
+
+      if (!content) throw new Error('Empty response from Groq')
 
       clearTimers()
       setProgress(100)
       setTimeout(() => {
-        setResult(data)
+        setGroqText(content)
+        const p = parseGroqResponse(content)
+        setParsed(p)
         setStage('done')
-        notify(`ATS scan complete — ${data.atsScore}/100 for ${effectiveRole}${data.demo ? ' (demo result)' : ''}`)
-      }, 350)
+        notify?.(`ATS scan complete via Groq ${GROQ_MODEL} — ${p.present.length} present, ${p.missing.length} missing`)
+      }, 300)
     } catch (err) {
       clearTimers()
       setStage('idle')
       setProgress(0)
-      console.error('ATS scan failed:', err)
-      notify('Scan failed — please try that PDF again')
+      console.error('Groq ATS scan failed:', err)
+      setError(err.message || 'Scan failed')
+      notify?.('Scan failed — check Groq key and try again')
     }
   }
 
   const reset = () => {
     clearTimers()
     setFile(null)
-    setResult(null)
+    setGroqText('')
+    setParsed(null)
+    setError('')
     setStage('idle')
     setProgress(0)
   }
 
   const scanning = stage === 'scanning'
+  const hasResult = stage === 'done' && parsed
 
   return (
-    <section className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-4 text-white sm:px-6">
-        <div className="flex items-center gap-3">
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/15 ring-1 ring-white/25">
+    <section className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      {/* Header — premium dark aesthetics */}
+      <div className="relative flex flex-wrap items-center justify-between gap-3 bg-slate-950 px-5 py-5 text-white dark:bg-black sm:px-6">
+        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 via-transparent to-amber-500/10" />
+        <div className="relative flex items-center gap-3">
+          <span className="grid h-10 w-10 place-items-center rounded-[12px] bg-white/10 ring-1 ring-white/15">
             <DownloadIcon className="h-5 w-5 rotate-180" />
           </span>
           <div>
-            <h2 className="text-base font-bold">AI ATS Resume Scanner</h2>
-            <p className="text-xs text-violet-100">Instant recruiter-grade score, matched to your target role</p>
+            <h2 className="text-[14px] font-semibold tracking-[-0.02em]">AI ATS Resume Scanner</h2>
+            <p className="mono mt-0.5 text-[11px] text-white/60">Groq {GROQ_MODEL} · exact format · no filler</p>
           </div>
         </div>
-        {result?.demo && (
-          <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold ring-1 ring-white/25">
-            Demo result
-          </span>
-        )}
+        <div className="relative flex items-center gap-2">
+          <BackButton variant="circle" className="bg-white/10 text-white ring-white/10 hover:bg-white hover:text-slate-900 dark:bg-white/10 dark:text-white dark:ring-white/10" />
+          {hasResult && (
+            <span className="mono rounded-full bg-emerald-500/15 px-3 py-1 text-[10px] font-bold text-emerald-300 ring-1 ring-emerald-500/20">
+              Groq live
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="p-5 sm:p-6">
-        {!result || scanning ? (
+        {/* Global BackButton for secondary screen usage */}
+        <div className="mb-4 flex">
+          <BackButton label="Back" />
+        </div>
+
+        {!hasResult || scanning ? (
           <>
             {/* Upload zone */}
             <label
-              onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+              onDragOver={(e) => {
+                e.preventDefault()
+                setDragging(true)
+              }}
               onDragLeave={() => setDragging(false)}
-              onDrop={(e) => { e.preventDefault(); setDragging(false); acceptFile(e.dataTransfer.files?.[0]) }}
-              className={`relative block cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed p-6 text-center transition ${
+              onDrop={(e) => {
+                e.preventDefault()
+                setDragging(false)
+                acceptFile(e.dataTransfer.files?.[0])
+              }}
+              className={`relative block cursor-pointer overflow-hidden rounded-[16px] border-2 border-dashed p-6 text-center transition ${
                 dragging
                   ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10'
-                  : 'border-gray-300 bg-gray-50/60 hover:border-indigo-400 hover:bg-indigo-50/40 dark:border-slate-600 dark:bg-slate-800/40 dark:hover:border-indigo-500'
+                  : 'border-slate-300 bg-slate-50/60 hover:border-slate-900 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/40 dark:hover:border-white dark:hover:bg-slate-800'
               }`}
             >
               {scanning && (
-                <span className="animate-scan-sweep pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-transparent via-indigo-400/30 to-transparent" />
+                <span className="animate-scan-sweep pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-transparent via-indigo-400/20 to-transparent" />
               )}
               <input
                 type="file"
                 accept="application/pdf,.pdf"
                 className="hidden"
-                onChange={(e) => { acceptFile(e.target.files?.[0]); e.target.value = '' }}
+                onChange={(e) => {
+                  acceptFile(e.target.files?.[0])
+                  e.target.value = ''
+                }}
                 disabled={scanning}
               />
-              <span className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">
+              <span className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900">
                 <SparklesIcon className="h-5 w-5" />
               </span>
               {file ? (
-                <p className="mt-3 text-sm font-semibold text-gray-900 dark:text-slate-100">
+                <p className="mt-3 text-sm font-semibold text-slate-900 dark:text-white">
                   {file.name}
-                  <span className="ml-2 text-xs font-medium text-gray-400">
-                    ({(file.size / 1024).toFixed(0)} KB)
-                  </span>
+                  <span className="ml-2 text-xs font-medium text-slate-400">({(file.size / 1024).toFixed(0)} KB)</span>
                 </p>
               ) : (
-                <p className="mt-3 text-sm font-semibold text-gray-900 dark:text-slate-100">
-                  Drag &amp; drop your resume, or click to browse
+                <p className="mt-3 text-sm font-semibold text-slate-900 dark:text-white">
+                  Drag & drop your resume, or click to browse
                 </p>
               )}
-              <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">PDF only · max 5 MB · text extracted locally before upload</p>
+              <p className="mono mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                PDF only · max 5 MB · text extracted locally → Groq {GROQ_MODEL}
+              </p>
             </label>
 
             {/* Role picker + scan button */}
@@ -264,191 +361,153 @@ export default function AtsScanner({ notify }) {
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
                   disabled={scanning}
-                  className="w-full appearance-none rounded-xl border border-gray-300 bg-white px-4 py-3 pr-9 text-sm font-medium text-gray-800 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 disabled:opacity-60"
+                  className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-4 py-3 pr-9 text-sm font-medium text-slate-800 shadow-sm transition focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 disabled:opacity-60"
                 >
-                  {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                  {ROLES.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
                 </select>
-                <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               </div>
               {role === 'Custom Role' && (
                 <input
                   value={customRole}
                   onChange={(e) => setCustomRole(e.target.value)}
-                  placeholder="e.g. Growth Marketer"
+                  placeholder="e.g. Growth Marketer / JD paste"
                   disabled={scanning}
-                  className="flex-1 rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-800 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 disabled:opacity-60"
+                  className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm transition focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 disabled:opacity-60"
                 />
               )}
               <button
                 onClick={startScan}
                 disabled={!file || scanning}
-                className="flex h-12 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:shrink-0"
+                className="flex h-12 items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-black active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 sm:shrink-0"
               >
-                {scanning ? 'Scanning…' : 'Scan resume'}
+                {scanning ? 'Scanning CV with Groq...' : 'Scan resume'}
                 {!scanning && <ArrowRightIcon className="h-4 w-4" />}
               </button>
             </div>
 
             {/* Scanning state */}
             {scanning && (
-              <div className="mt-5">
+              <div className="mt-5 rounded-[14px] bg-slate-50 p-4 ring-1 ring-slate-200 dark:bg-slate-800/50 dark:ring-slate-700">
                 <div className="flex items-center justify-between text-xs font-semibold">
-                  <span key={stageIdx} className="animate-fade-up text-indigo-600 dark:text-indigo-300">
-                    {STAGES[stageIdx]}
+                  <span key={stageIdx} className="animate-pulse text-slate-900 dark:text-white">
+                    {STAGES[stageIdx]} — {GROQ_MODEL}
                   </span>
-                  <span className="text-gray-400">{Math.min(99, Math.round(progress))}%</span>
+                  <span className="mono text-slate-400">{Math.min(99, Math.round(progress))}%</span>
                 </div>
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-slate-800">
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 transition-all duration-300"
+                    className="h-full rounded-full bg-slate-900 transition-all duration-300 dark:bg-white"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
+                <p className="mono mt-2 text-[10px] text-slate-500">Groq API: https://api.groq.com/openai/v1/chat/completions · key via import.meta.env.VITE_GROQ_API_KEY</p>
+              </div>
+            )}
+
+            {error && (
+              <div className="mt-4 rounded-[12px] bg-rose-50 p-3 text-[12px] leading-5 text-rose-700 ring-1 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/20">
+                {error}
               </div>
             )}
           </>
         ) : (
-          /* ------------------------------ Results ------------------------------ */
-          <div className="animate-fade-up">
-            {result.atsScore === 0 ? (
-              /* Invalid document (invoice/receipt/non-resume) per guardrail #1 */
-              <div className="rounded-2xl border-2 border-rose-300 bg-rose-50 p-5 text-center dark:border-rose-500/40 dark:bg-rose-500/10 sm:p-7">
-                <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-300">
-                  <XIcon className="h-6 w-6" />
-                </span>
-                <p className="mt-3 text-base font-bold text-rose-700 dark:text-rose-200">
-                  {result.verdict}
-                </p>
-                <p className="mt-1.5 text-xs leading-relaxed text-rose-500 dark:text-rose-300/80">
-                  Our ATS found no resume content in this file — it may be an invoice, receipt,
-                  or an image-only PDF. Export your resume as a text PDF and try again.
-                </p>
-                <button
-                  onClick={reset}
-                  className="mt-4 rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-500"
-                >
-                  Upload a valid resume
-                </button>
-              </div>
-            ) : (
-            <>
-            {/* Score + verdict */}
-            <div className="flex flex-col items-center gap-5 sm:flex-row sm:px-2">
-              <ScoreGauge score={result.atsScore} />
-              <div className="min-w-0 text-center sm:text-left">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">
-                  ATS Score · {effectiveRole}
-                </p>
-                <p className="mt-1.5 text-sm leading-relaxed text-gray-600 dark:text-slate-300">
-                  {result.verdict}
-                </p>
-                <button onClick={reset} className="mt-3 text-xs font-semibold text-indigo-600 transition hover:underline dark:text-indigo-300">
-                  ← Scan another resume
-                </button>
-              </div>
+          /* ------------------------------ Results — mapped from Groq exact format ------------------------------ */
+          <div className="animate-fade-up space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="mono text-[11px] uppercase tracking-[0.08em] text-slate-400">Groq response · exact format</p>
+              <button onClick={reset} className="mono text-[11px] font-medium text-slate-600 underline-offset-4 hover:text-slate-900 hover:underline dark:text-slate-400 dark:hover:text-white">
+                ← Scan another
+              </button>
             </div>
 
-            {/* Keyword lists */}
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-500/25 dark:bg-emerald-500/10">
-                <p className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-300">
-                  Matched keywords · {result.matchedKeywords.length}
-                </p>
-                <div className="mt-2.5 flex flex-wrap gap-1.5">
-                  {result.matchedKeywords.map((k) => (
-                    <Kbd key={k} tone="bg-emerald-100 text-emerald-700 ring-emerald-300/50 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/25">{k}</Kbd>
-                  ))}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-4 dark:border-rose-500/25 dark:bg-rose-500/10">
-                <p className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-300">
-                  Missing keywords · {result.missingKeywords.length}
-                </p>
-                <div className="mt-2.5 flex flex-wrap gap-1.5">
-                  {result.missingKeywords.map((k) => (
-                    <Kbd key={k} tone="bg-white/80 text-rose-600 ring-rose-300/60 dark:bg-slate-800 dark:text-rose-300 dark:ring-rose-400/25">{k}</Kbd>
-                  ))}
-                </div>
-              </div>
-            </div>
+            {/* Render by splitting ### into custom UI cards */}
+            {parsed.sections.map((sec, idx) => {
+              const isKeyword = /1\. Keyword Analysis/i.test(sec)
+              const isFeedback = /2\. Detailed Feedback/i.test(sec)
+              const cleanTitle = sec.split('\n')[0].replace(/^\d+\.\s*/, '').trim()
 
-            {/* Sectional analysis */}
-            <div className="mt-4 space-y-2.5">
-              <AnalysisCard title="Formatting & ATS Readability" tone="bg-sky-500">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Verdict:</span>
-                  <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${verdictTone[result.formattingRating] ?? verdictTone['Needs Work']}`}>
-                    {result.formattingRating}
-                  </span>
-                </div>
-                <ul className="mt-2.5 space-y-1.5 text-xs leading-relaxed text-gray-600 dark:text-slate-300">
-                  <li className="flex gap-1.5"><CheckIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" /> Single-column parse check: text extracted successfully</li>
-                  <li className="flex gap-1.5"><CheckIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" /> Keeps margins &amp; standard fonts readable for parsers</li>
-                  <li className="flex gap-1.5"><XIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-400" /> Avoid tables/text-boxes for dates — some ATS engines drop them</li>
-                </ul>
-              </AnalysisCard>
-
-              <AnalysisCard title="Action Verbs & Impact" tone="bg-indigo-500">
-                {result.strengths.length > 0 && (
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-300">Working in your favor</p>
-                    <ul className="mt-2 space-y-1.5">
-                      {result.strengths.map((s) => (
-                        <li key={s} className="flex gap-1.5 text-xs leading-relaxed text-gray-700 dark:text-slate-200">
-                          <CheckIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />{s}
-                        </li>
-                      ))}
-                    </ul>
+              if (isKeyword) {
+                return (
+                  <div key={idx} className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/10">
+                      <p className="mono text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                        Present Keywords · {parsed.present.length}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {parsed.present.length ? parsed.present.map((k) => (
+                          <Kbd key={k} tone="bg-emerald-100 text-emerald-700 ring-emerald-300/50 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20">{k}</Kbd>
+                        )) : <span className="mono text-[11px] text-slate-500">None detected</span>}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-500/20 dark:bg-amber-500/10">
+                      <p className="mono text-[11px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                        Missing Keywords · {parsed.missing.length}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {parsed.missing.length ? parsed.missing.map((k) => (
+                          <Kbd key={k} tone="bg-white text-amber-700 ring-amber-300/60 dark:bg-slate-800 dark:text-amber-300 dark:ring-amber-400/20">{k}</Kbd>
+                        )) : <span className="mono text-[11px] text-slate-500">None — well covered</span>}
+                      </div>
+                    </div>
                   </div>
-                )}
-                {result.weaknesses.length > 0 && (
-                  <div className="mt-3.5 border-t border-gray-100 pt-3 dark:border-slate-700/60">
-                    <p className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-300">Costing you points</p>
-                    <ul className="mt-2 space-y-1.5">
-                      {result.weaknesses.map((w) => (
-                        <li key={w} className="flex gap-1.5 text-xs leading-relaxed text-gray-700 dark:text-slate-200">
-                          <XIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />{w}
-                        </li>
+                )
+              }
+
+              if (isFeedback) {
+                return (
+                  <AnalysisCard key={idx} title={`### 2. ${cleanTitle || 'Detailed Feedback'}`} tone="bg-slate-900 dark:bg-white" defaultOpen>
+                    <div className="space-y-2">
+                      {parsed.feedback.split('\n').filter(Boolean).map((line, i) => (
+                        <p key={i} className="flex gap-2 text-[12px] leading-6 text-slate-700 dark:text-slate-200">
+                          <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-slate-400" />
+                          <span>{line.replace(/^[-•]\s*/, '').trim()}</span>
+                        </p>
                       ))}
-                    </ul>
-                  </div>
-                )}
-              </AnalysisCard>
+                    </div>
+                  </AnalysisCard>
+                )
+              }
 
-              <AnalysisCard title="Missing Technical & Soft Skills" tone="bg-rose-500">
-                <p className="text-xs leading-relaxed text-gray-600 dark:text-slate-300">
-                  These high-value {effectiveRole} keywords never appear in your resume — weave 2–3 into project bullets where they are genuinely true:
-                </p>
-                <div className="mt-2.5 flex flex-wrap gap-1.5">
-                  {result.missingKeywords.map((k) => (
-                    <Kbd key={k} tone="bg-rose-100 text-rose-700 ring-rose-300/50 dark:bg-rose-500/15 dark:text-rose-200 dark:ring-rose-400/25">{k}</Kbd>
-                  ))}
-                </div>
-              </AnalysisCard>
-            </div>
+              // Fallback generic card for any extra ###
+              return (
+                <AnalysisCard key={idx} title={`### ${cleanTitle}`} tone="bg-indigo-500" defaultOpen>
+                  <p className="whitespace-pre-wrap text-[12px] leading-6 text-slate-600 dark:text-slate-300">{sec.split('\n').slice(1).join('\n').trim()}</p>
+                </AnalysisCard>
+              )
+            })}
 
-            {/* Next steps checklist */}
-            <div className="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50/50 p-4 dark:border-indigo-500/25 dark:bg-indigo-500/10">
-              <p className="flex items-center gap-2 text-sm font-bold text-indigo-700 dark:text-indigo-200">
-                <SparklesIcon className="h-4 w-4" />
-                How to fix — your next 30 minutes
-              </p>
-              <ul className="mt-2.5 space-y-2">
-                {result.actionableRecommendations.map((step, i) => (
-                  <li key={i} className="flex items-start gap-2.5 text-xs leading-relaxed text-gray-700 dark:text-slate-200">
-                    <span className="grid mt-px h-[18px] w-[18px] shrink-0 place-items-center rounded-md border-2 border-indigo-400 text-[10px] font-bold text-indigo-500 dark:text-indigo-300">
-                      {i + 1}
-                    </span>
-                    {step}
-                  </li>
-                ))}
+            {/* Raw Groq output — collapsible, for debugging / exact format verification */}
+            <details className="rounded-[12px] bg-slate-50 p-3 ring-1 ring-slate-200 dark:bg-slate-800/50 dark:ring-slate-700">
+              <summary className="mono cursor-pointer text-[11px] font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
+                View raw Groq output (exact format verification)
+              </summary>
+              <pre className="mono mt-3 whitespace-pre-wrap break-words text-[11px] leading-5 text-slate-600 dark:text-slate-300">
+                {groqText}
+              </pre>
+            </details>
+
+            <div className="rounded-[14px] bg-slate-950 p-4 text-white dark:bg-black">
+              <p className="mono text-[11px] uppercase tracking-[0.08em] text-white/60">Next steps</p>
+              <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px] leading-5 text-white/80">
+                <li>Add 2–3 missing keywords into project bullets where genuinely true</li>
+                <li>Fix formatting: single column, no tables/text-boxes for dates</li>
+                <li>Rescan — target 85%+ present keywords for {effectiveRole}</li>
               </ul>
             </div>
-            </>
-            )}
           </div>
         )}
       </div>
+
+      <style>{`
+        @keyframes scan-sweep { 0% { transform: translateY(-100%); } 100% { transform: translateY(400%); } }
+        .animate-scan-sweep { animation: scan-sweep 1.2s linear infinite; }
+        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      `}</style>
     </section>
   )
 }

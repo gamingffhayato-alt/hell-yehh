@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import DashboardShell from '../DashboardShell'
+import BackButton from '../../BackButton'
 
 export default function AssessmentPage() {
   const [questions, setQuestions] = useState(null)
@@ -59,6 +60,7 @@ export default function AssessmentPage() {
   return (
     <DashboardShell activeMain="profile" activeSub="assessment" title="Assessment · AI coding test">
       <div className="max-w-[900px] space-y-6">
+        <BackButton />
         <div className="rounded-[16px] bg-white p-5 ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
           <p className="text-[13px] font-medium tracking-[-0.01em]">How it works</p>
           <p className="mono mt-1 text-[11px] leading-5 text-slate-500">5 questions are generated live via Groq at request time (not hardcoded) using ASS_KEY — separate serverless env from existing chat key AI_API_KEY. Key lives only in Vercel serverless function, never client. Student uploads .txt answers, AI grader returns feedback/score.</p>
