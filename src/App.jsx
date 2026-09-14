@@ -13,6 +13,12 @@ import AdminDashboard from './components/admin/AdminDashboard'
 import ContactPage from './components/ContactPage'
 import AskAiWidgetGate from './components/AskAiWidget'
 import ThemeToggle from './components/ThemeToggle'
+import AtsPage from './components/dashboard/pages/AtsPage'
+import ProjectsPage from './components/dashboard/pages/ProjectsPage'
+import TrendingSkillsPage from './components/dashboard/pages/TrendingSkillsPage'
+import FeedPage from './components/dashboard/pages/FeedPage'
+import AssessmentPage from './components/dashboard/pages/AssessmentPage'
+import ApplicationsPage from './components/dashboard/pages/ApplicationsPage'
 
 /** /signup?role=x folds into /login?role=x and auto-opens the sign-up modal —
     the query string must survive so the wizard can pre-select the role. */
@@ -69,6 +75,12 @@ export default function App() {
           <Route path="/details" element={<OnboardingRoute><DetailsPage /></OnboardingRoute>} />
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/dashboard/ats" element={<ProtectedRoute><AtsPage /></ProtectedRoute>} />
+          <Route path="/dashboard/projects" element={<ProtectedRoute><ProjectsPage /></ProtectedRoute>} />
+          <Route path="/dashboard/trending" element={<ProtectedRoute><TrendingSkillsPage /></ProtectedRoute>} />
+          <Route path="/dashboard/feed" element={<ProtectedRoute><FeedPage /></ProtectedRoute>} />
+          <Route path="/dashboard/assessment" element={<ProtectedRoute><AssessmentPage /></ProtectedRoute>} />
+          <Route path="/dashboard/applications" element={<ProtectedRoute><ApplicationsPage /></ProtectedRoute>} />
           <Route path="/industry-dashboard" element={<ProtectedRoute><IndustryDashboard /></ProtectedRoute>} />
           <Route path="/academic-dashboard" element={<ProtectedRoute><AcademicDashboard /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />

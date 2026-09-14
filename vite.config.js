@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { handleChat } from './api/_shared.js'
 import { handleAts } from './api/_ats.js'
+import { handleAssessmentGenerate, handleAssessmentGrade } from './api/_assessment.js'
 
 /**
  * Dev mirrors of the Vercel serverless functions — answer POST /api/chat and
@@ -52,6 +53,8 @@ function devApiPlugin() {
     configureServer(server) {
       mountJsonApi(server, '/api/chat', handleChat)
       mountJsonApi(server, '/api/ats-analyze', handleAts)
+      mountJsonApi(server, '/api/assessment-generate', handleAssessmentGenerate)
+      mountJsonApi(server, '/api/assessment-grade', handleAssessmentGrade)
     },
   }
 }
