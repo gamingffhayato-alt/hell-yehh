@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { useState, useCallback } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import PasswordInput from './PasswordInput'
 import SignUpModal from './SignUpModal'
@@ -16,6 +16,7 @@ function ArrowLeft(props) {
 
 export default function AuthPage() {
   const location = useLocation()
+  const navigate = useNavigate()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -25,33 +26,41 @@ export default function AuthPage() {
   const routeError = location.state?.error
   const [signupOpen, setSignupOpen] = useState(Boolean(location.state?.openSignup))
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleLogin = useCallback(async () => {
     sessionStorage.setItem('auth_intent', 'login')
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/dashboard` },
     })
     if (error) console.error('Google sign-in error:', error.message)
-  }
+  }, [])
 
-  const handleLogin = async (e) => {
-    e.preventDefault()
-    if (loading) return
-    setError('')
-    setLoading(true)
+  const handleLogin = useCallback(
+    async (e) => {
+      e.preventDefault()
+      if (loading) return
+      setError('')
+      setLoading(true)
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    setLoading(false)
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
 
-    if (error) {
-      setError(
-        error.message?.toLowerCase().includes('invalid login credentials')
-          ? 'Incorrect email or password. New here? Create an account from the link below.'
-          : error.message,
-      )
-      return
-    }
-  }
+      if (error) {
+        setLoading(false)
+        setError(
+          error.message?.toLowerCase().includes('invalid login credentials')
+            ? 'Incorrect email or password. New here? Create an account from the link below.'
+            : error.message
+        )
+        return
+      }
+
+      // Performance fix: immediate redirect with replace:true — no history buildup, snappy UX
+      // AuthContext will still resolve profile and role-based redirect, but user sees instant feedback
+      navigate('/dashboard', { replace: true })
+      // Keep loading true until AuthContext takes over to avoid flicker
+    },
+    [email, password, loading, navigate]
+  )
 
   const shownError = error || routeError
 
@@ -77,7 +86,7 @@ export default function AuthPage() {
       </Link>
 
       <div className="relative w-full max-w-[400px]">
-        {/* Brand — matches landing */}
+        {/* Brand */}
         <div className="mb-8 flex flex-col items-center">
           <Link to="/" className="flex items-center gap-2.5">
             <span className="grid h-9 w-9 place-items-center rounded-[10px] bg-slate-900 text-white ring-1 ring-slate-900 dark:bg-white dark:text-slate-950 dark:ring-white">
