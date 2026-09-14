@@ -17,7 +17,7 @@ export default function AtsPage() {
       <div className="max-w-[920px] space-y-5">
         <div className="flex items-center gap-3">
           <BackButton />
-          <p className="mono text-[11px] text-slate-500">Premium circle back · Groq llama3-8b-8192 · exact format</p>
+          <p className="mono text-[11px] text-slate-500">Premium circle back · Groq openai/gpt-oss-20b · exact format</p>
         </div>
 
         <div className="rounded-[16px] bg-slate-950 p-4 text-white dark:bg-black">

@@ -29,7 +29,7 @@ const STAGES = [
 
 /* --- Groq Config --- */
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const GROQ_MODEL = 'llama3-8b-8192' // fast, per task spec
+const GROQ_MODEL = 'openai/gpt-oss-20b' // per user request — unified across ATS & assessment
 
 const SYSTEM_PROMPT = `You are an expert ATS (Applicant Tracking System) CV analyzer. Compare the provided CV text against the target Job Description (or general industry standards if none provided). You MUST output your response EXACTLY in this format, with no conversational filler before or after:
 
