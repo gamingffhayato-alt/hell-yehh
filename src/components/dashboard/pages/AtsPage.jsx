@@ -1,7 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import DashboardShell from '../DashboardShell'
 import AtsScanner from '../../AtsScanner'
-import BackButton from '../../BackButton'
 
 export default function AtsPage() {
   const [toast, setToast] = useState(null)
@@ -13,21 +12,8 @@ export default function AtsPage() {
   }, [])
 
   return (
-    <DashboardShell activeMain="profile" activeSub="ats" title="ATS Scanner · Groq">
+    <DashboardShell activeMain="profile" activeSub="ats" title="Resume Scanner">
       <div className="max-w-[920px] space-y-5">
-        <div className="flex items-center gap-3">
-          <BackButton />
-          <p className="mono text-[11px] text-slate-500">Premium circle back · Groq openai/gpt-oss-20b · exact format</p>
-        </div>
-
-        <div className="rounded-[16px] bg-slate-950 p-4 text-white dark:bg-black">
-          <p className="mono text-[11px] uppercase tracking-[0.08em] text-white/60">Flow</p>
-          <p className="mt-1 text-[12px] leading-5 text-white/80">
-            Already uploaded → Continue existing or Upload another · New resume → upload flow on ATS portal. Now rewired to Groq API direct via <span className="font-mono">VITE_GROQ_API_KEY</span>.
-          </p>
-        </div>
-
-        {/* Rewired AtsScanner handles Groq directly */}
         <AtsScanner notify={notify} />
 
         {toast && (
