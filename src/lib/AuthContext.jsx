@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from './supabase'
 
@@ -10,19 +10,17 @@ export function useAuth() {
 
 export function FullScreenLoader({ label }) {
   return (
-    <div className="grid min-h-screen place-items-center bg-gray-50">
+    <div className="grid min-h-screen place-items-center bg-white dark:bg-slate-950">
       <div className="flex flex-col items-center gap-3">
-        <span className="h-8 w-8 animate-spin rounded-full border-[3px] border-indigo-200 border-t-indigo-600" />
-        <p className="text-sm text-gray-500">{label}</p>
+        <span className="h-8 w-8 animate-spin rounded-full border-[3px] border-slate-200 border-t-slate-900 dark:border-slate-800 dark:border-t-white" />
+        <p className="mono text-[13px] tracking-[-0.01em] text-slate-500 dark:text-slate-400">{label}</p>
       </div>
     </div>
   )
 }
 
-/** A profile counts as "account exists + onboarding done" only when it has a role. */
 const isProfileComplete = (profile) => Boolean(profile?.role)
 
-/** Role-aware home route — each built portal gets its own dashboard. */
 export const homeForRole = (role) => {
   if (role === 'industry') return '/industry-dashboard'
   if (role === 'academician') return '/academic-dashboard'
@@ -30,18 +28,17 @@ export const homeForRole = (role) => {
 }
 
 /**
- * Central auth state machine.
+ * Central auth state machine — FIXED for focus/tab-switch unmount bug
  *
- * status:
- *   'loading'         – checking session / profiles table
- *   'signedOut'       – no session
- *   'needsOnboarding' – signed in, but no completed profile (must see /details)
- *   'ready'           – signed in + completed profile (allowed in app)
+ * Previous bug: onAuthStateChange fired on window focus (SIGNED_IN / TOKEN_REFRESHED / USER_UPDATED)
+ * and set status='loading', which made OnboardingRoute/ProtectedRoute show "Preparing your setup..."
+ * and unmount the form, losing OTP state.
  *
- * PERSISTENCE: status starts as 'loading' on every mount. The provider only
- * renders decisions AFTER supabase (persistSession) replays the stored
- * session and fires INITIAL_SESSION/SIGNED_IN — so protected routes never
- * flash-redirect to /login on a refresh while the stored session exists.
+ * Fix:
+ * - Track hasLoadedOnceRef — FullScreenLoader ONLY on very first mount
+ * - Track sessionRef/statusRef to avoid setting loading=true on subsequent events if already loaded
+ * - Only set loading=true when status is 'loading' (initial) or session was null
+ * - For TOKEN_REFRESHED / USER_UPDATED / SIGNED_IN after initial load, update session silently without triggering loader
  */
 export function AuthProvider({ children }) {
   const navigate = useNavigate()
@@ -49,27 +46,59 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null)
   const [status, setStatus] = useState('loading')
 
+  // Refs to access latest values inside the async callback without stale closure
+  const sessionRef = useRef(null)
+  const statusRef = useRef('loading')
+  const hasLoadedOnceRef = useRef(false)
+
+  useEffect(() => {
+    sessionRef.current = session
+  }, [session])
+  useEffect(() => {
+    statusRef.current = status
+  }, [status])
+
   useEffect(() => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      // Deferred: DB calls inside the listener can re-enter supabase-js's auth lock.
       setTimeout(async () => {
-        setSession(nextSession ?? null)
+        const previousSession = sessionRef.current
+        const previousStatus = statusRef.current
 
-        /* ------------------------------ Signed out ------------------------------ */
+        setSession(nextSession ?? null)
+        sessionRef.current = nextSession ?? null
+
         if (!nextSession?.user) {
           setProfile(null)
           setStatus('signedOut')
+          statusRef.current = 'signedOut'
+          hasLoadedOnceRef.current = true
           return
         }
 
-        /* Token refreshes / user updates: refresh the session object only —
-           never re-run routing so the user isn't yanked mid-session. */
-        if (event !== 'SIGNED_IN' && event !== 'INITIAL_SESSION') return
+        // FIX: Don't trigger loading spinner on focus events if already loaded
+        // Only set loading=true on very first mount (INITIAL_SESSION) or when we were signed out
+        const isInitialLoad = !hasLoadedOnceRef.current
+        const wasSignedOut = previousStatus === 'signedOut' || !previousSession
 
-        /* ---------------------------- Signed in ------------------------------- */
-        setStatus('loading')
+        // For subsequent events like TOKEN_REFRESHED, USER_UPDATED, or SIGNED_IN from focus,
+        // if we already have a session and have loaded once, DON'T set loading=true
+        const shouldShowLoader = isInitialLoad || wasSignedOut || previousStatus === 'loading'
+
+        if (shouldShowLoader) {
+          setStatus('loading')
+          statusRef.current = 'loading'
+        }
+        // If not shouldShowLoader, we keep current status (ready/needsOnboarding) to avoid unmounting form
+
+        // Only handle profile resolution for INITIAL_SESSION and SIGNED_IN
+        // For TOKEN_REFRESHED / USER_UPDATED, we already updated session above and can return early
+        if (event !== 'SIGNED_IN' && event !== 'INITIAL_SESSION') {
+          // Silent session refresh — don't touch profile or status, don't navigate
+          // This prevents "Preparing your setup..." on tab switch
+          return
+        }
 
         let resolvedProfile = null
         try {
@@ -81,38 +110,31 @@ export function AuthProvider({ children }) {
           if (error) console.error('profiles query failed:', error.message)
           resolvedProfile = prof
         } catch (e) {
-          // Network hiccup on refresh → never leave the app stuck on "loading".
           console.error('profiles query crashed:', e)
-          setStatus('signedOut')
+          if (shouldShowLoader) {
+            setStatus('signedOut')
+            statusRef.current = 'signedOut'
+          }
+          hasLoadedOnceRef.current = true
           return
         }
 
-        /* Email sign-up users carry their registration details in auth
-           metadata (source: 'email_signup'). If the profiles row doesn't exist
-           yet (e.g. first login after email confirmation — inserts are blocked
-           pre-session by RLS), materialize it here as soon as a session exists. */
         const md = nextSession.user.user_metadata || {}
         if (!resolvedProfile && md?.source === 'email_signup') {
           const record = {
             id: nextSession.user.id,
             email: nextSession.user.email,
             full_name: md.full_name || null,
-            // Role chosen on step 1 of the sign-up wizard ('student' |
-            // 'industry'); older accounts without it fall back to student.
             role: md.role || 'student',
             marketing_source: md.marketing_source || null,
-            // Student academic details (null for industry partners)
             class_year: md.class_year || null,
             course: md.course || null,
             stream: md.stream || null,
             institution: md.institution || null,
-            // Industry partner details (null for students)
             company_name: md.company_name || null,
             job_title: md.job_title || null,
           }
-          const { error: upsertError } = await supabase
-            .from('profiles')
-            .upsert([record])
+          const { error: upsertError } = await supabase.from('profiles').upsert([record])
           if (upsertError) {
             console.error('profile creation from signup metadata failed:', upsertError.message)
           } else {
@@ -120,25 +142,16 @@ export function AuthProvider({ children }) {
           }
         }
 
-        /* Google sign-up with a pre-picked role: the sign-up wizard stashes
-           sessionStorage 'oauth_role' before the OAuth redirect (redirectTo
-           is /dashboard). Materialize the profile here so the user's role is
-           saved on the very first session and routing skips /details. */
         if (!resolvedProfile && event === 'SIGNED_IN') {
           const oauthRole = sessionStorage.getItem('oauth_role')
-          if (
-            sessionStorage.getItem('auth_intent') !== 'login' &&
-            ['student', 'industry', 'academician'].includes(oauthRole)
-          ) {
+          if (sessionStorage.getItem('auth_intent') !== 'login' && ['student', 'industry', 'academician'].includes(oauthRole)) {
             const record = {
               id: nextSession.user.id,
               email: nextSession.user.email,
               full_name: md.full_name ?? md.name ?? null,
               role: oauthRole,
             }
-            const { error: upsertError } = await supabase
-              .from('profiles')
-              .upsert([record])
+            const { error: upsertError } = await supabase.from('profiles').upsert([record])
             if (upsertError) {
               console.error('OAuth role profile creation failed:', upsertError.message)
             } else {
@@ -152,43 +165,46 @@ export function AuthProvider({ children }) {
         setProfile(resolvedProfile)
 
         if (event === 'SIGNED_IN') {
-          /* A fresh sign-in. Enforce Login vs Sign-Up intent (Google flow stashes
-             it in sessionStorage before the OAuth redirect). */
           const intent = sessionStorage.getItem('auth_intent')
           sessionStorage.removeItem('auth_intent')
 
           if (intent === 'login' && !complete) {
-            // Brand-new user tried to LOG IN → block and force sign-out so they
-            // can never slip through as an unregistered logged-in user.
             await supabase.auth.signOut()
             setProfile(null)
             setStatus('signedOut')
+            statusRef.current = 'signedOut'
+            hasLoadedOnceRef.current = true
             navigate('/login', {
               replace: true,
-              state: {
-                error:
-                  'Please sign up first — no Intern X account exists for this Google user.',
-              },
+              state: { error: 'Please sign up first — no Intern X account exists for this Google user.' },
             })
             return
           }
 
           if (complete) {
             setStatus('ready')
-            // Dynamic redirect by role — applies both to a just-created
-            // account and to every returning login: industry partners →
-            // /industry-dashboard, students (and everyone else) → /dashboard.
-            navigate(homeForRole(resolvedProfile?.role), { replace: true })
+            statusRef.current = 'ready'
+            hasLoadedOnceRef.current = true
+            // Only navigate if this was a fresh sign-in (was signed out), not a focus event
+            if (wasSignedOut || isInitialLoad) {
+              navigate(homeForRole(resolvedProfile?.role), { replace: true })
+            }
           } else {
-            // First-time sign-up (Google) → finish onboarding on /details.
             setStatus('needsOnboarding')
-            navigate('/details', { replace: true })
+            statusRef.current = 'needsOnboarding'
+            hasLoadedOnceRef.current = true
+            if (wasSignedOut || isInitialLoad) {
+              navigate('/details', { replace: true })
+            }
           }
           return
         }
 
-        // INITIAL_SESSION (page refresh with stored session) → reflect only.
-        setStatus(complete ? 'ready' : 'needsOnboarding')
+        // INITIAL_SESSION
+        const nextStatus = complete ? 'ready' : 'needsOnboarding'
+        setStatus(nextStatus)
+        statusRef.current = nextStatus
+        hasLoadedOnceRef.current = true
       }, 0)
     })
 

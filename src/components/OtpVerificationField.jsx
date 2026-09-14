@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-/* Icons — Lucide style, inline SVG */
+/* Icons */
 function CheckIcon(props) {
   return (
     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
@@ -33,39 +33,25 @@ function SpinnerIcon(props) {
   )
 }
 
-/**
- * Parses Supabase / network errors into user-friendly, specific messages.
- * Covers: offline, rate-limit, invalid email, expired/invalid OTP.
- */
 function parseSupabaseError(err, context) {
   const msg = (err?.message || '').toLowerCase()
   const status = err?.status
-
-  // No active network / fetch failure
   if (!navigator.onLine || msg.includes('failed to fetch') || msg.includes('networkerror') || msg.includes('network error') || msg.includes('fetch failed')) {
     return 'No internet connection. Please check your network and try again.'
   }
-
-  // Rate-limit
   if (status === 429 || msg.includes('rate limit') || msg.includes('too many requests') || msg.includes('over_email_send_rate_limit') || msg.includes('over_sms_send_rate_limit') || msg.includes('email rate limit') || msg.includes('sms rate limit')) {
     return 'Too many requests. Please wait a minute before trying again.'
   }
-
   if (context === 'send') {
-    if (msg.includes('invalid') && msg.includes('email')) {
-      return 'Please enter a valid email address.'
-    }
+    if (msg.includes('invalid') && msg.includes('email')) return 'Please enter a valid email address.'
     return err?.message || 'Failed to send code. Please try again.'
   }
-
-  // Verify context — OTP expired or incorrect
   if (msg.includes('expired') || msg.includes('otp_expired') || msg.includes('token has expired') || msg.includes('token expired')) {
     return 'Code has expired. Please request a new code.'
   }
   if (msg.includes('invalid') || msg.includes('otp_disabled') || msg.includes('invalid token') || msg.includes('token is invalid') || msg.includes('otp_invalid') || msg.includes('invalid otp')) {
     return 'Incorrect code. Please check and try again.'
   }
-
   return err?.message || 'Invalid code. Please try again.'
 }
 
@@ -74,19 +60,15 @@ function isValidEmail(email) {
 }
 
 /**
- * OtpVerificationField — Production-safe hybrid OTP field for Intern X
+ * OtpVerificationField — Production-safe + sessionStorage-persisted
  *
- * Public API (kept identical for drop-in replacement):
- * @param {string} props.label - e.g. "Email Address"
- * @param {string} props.placeholder
- * @param {'email'|'tel'} props.type - email uses real Supabase, tel is simulated
- * @param {string} props.value - controlled main input value
- * @param {function} props.onChange - (newValue) => void, updates parent form
- * @param {function} props.onVerified - (verifiedValue) => void, called on success
+ * PERSISTENCE FIX for tab-switch bug:
+ * - Saves current step to sessionStorage using type as key: internx_otp_step_email / internx_otp_step_tel
+ * - Also persists otp code, verified flag, and countdown end timestamp
+ * - On mount, initializes from storage so remount after AuthContext focus event still shows 6-digit boxes
  *
- * State machine: idle | sending | entering | verifying | verified
- * Error path: on any failure, never leaves UI stuck — returns to idle (send failed)
- * or entering (verify failed) with OTP cleared and focus reset.
+ * Auth fix: Uses signInWithOtp + type:'email' (not email_change) for initial verification.
+ * See JSDoc in handleSendOtp / handleVerify for rationale.
  */
 export default function OtpVerificationField({
   label = 'Email Address',
@@ -98,11 +80,55 @@ export default function OtpVerificationField({
 }) {
   const isEmail = type === 'email'
 
-  // State machine — same states as original file
-  const [state, setState] = useState('idle')
-  const [otp, setOtp] = useState(['', '', '', '', '', ''])
+  // sessionStorage keys using type prop as key
+  const STEP_KEY = `internx_otp_step_${type}`
+  const CODE_KEY = `internx_otp_code_${type}`
+  const VERIFIED_KEY = `internx_otp_verified_${type}`
+  const COUNTDOWN_END_KEY = `internx_otp_countdown_end_${type}`
+
+  // Initialize from sessionStorage first — survives unmount during tab switching
+  const [state, setState] = useState(() => {
+    try {
+      const verified = sessionStorage.getItem(VERIFIED_KEY)
+      if (verified === 'true') return 'verified'
+      const savedStep = sessionStorage.getItem(STEP_KEY)
+      if (!savedStep) return 'idle'
+      // Map legacy 'otp' to 'entering'
+      if (savedStep === 'otp') return 'entering'
+      if (['idle', 'sending', 'entering', 'verifying', 'verified'].includes(savedStep)) {
+        // If we were in sending/verifying and remounted, show entering instead of stuck spinner
+        if (savedStep === 'sending' || savedStep === 'verifying') return 'entering'
+        return savedStep
+      }
+      return 'idle'
+    } catch {
+      return 'idle'
+    }
+  })
+
+  const [otp, setOtp] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem(CODE_KEY)
+      if (!raw) return ['', '', '', '', '', '']
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed) && parsed.length === 6) return parsed
+      return ['', '', '', '', '', '']
+    } catch {
+      return ['', '', '', '', '', '']
+    }
+  })
+
   const [error, setError] = useState('')
-  const [countdown, setCountdown] = useState(30)
+  const [countdown, setCountdown] = useState(() => {
+    try {
+      const end = sessionStorage.getItem(COUNTDOWN_END_KEY)
+      if (!end) return 30
+      const remaining = Math.ceil((parseInt(end, 10) - Date.now()) / 1000)
+      return remaining > 0 ? remaining : 0
+    } catch {
+      return 30
+    }
+  })
 
   const inputRefs = useRef([])
   const countdownIntervalRef = useRef(null)
@@ -114,7 +140,6 @@ export default function OtpVerificationField({
   const isVerifying = state === 'verifying'
   const isLocked = isEntering || isVerifying || isVerified
 
-  // Helper to track timeouts for cleanup
   const trackTimeout = (id) => {
     timeoutRefs.current.push(id)
     return id
@@ -129,16 +154,41 @@ export default function OtpVerificationField({
     timeoutRefs.current = []
   }
 
-  // Component unmounts while setTimeout/setInterval pending — clear all timers (fixes leak)
+  // Unmount cleanup — clear all timers (fixes leak)
   useEffect(() => {
-    return () => {
-      clearAllTimers()
-    }
+    return () => clearAllTimers()
   }, [])
 
-  // Resend cooldown — 30s countdown, with proper cleanup to avoid leaks
+  // Persist step to sessionStorage using type as key
   useEffect(() => {
-    // Clear any existing interval when state changes
+    try {
+      sessionStorage.setItem(STEP_KEY, state)
+      if (state === 'verified') {
+        sessionStorage.setItem(VERIFIED_KEY, 'true')
+      }
+      if (state === 'entering') {
+        // Persist countdown end timestamp so resend cooldown survives remount
+        const end = Date.now() + countdown * 1000
+        // Only set end if not already set or countdown is 30 (fresh)
+        if (countdown === 30) {
+          sessionStorage.setItem(COUNTDOWN_END_KEY, String(end))
+        }
+      }
+      if (state === 'idle') {
+        sessionStorage.removeItem(COUNTDOWN_END_KEY)
+      }
+    } catch {}
+  }, [state, countdown, STEP_KEY, VERIFIED_KEY, COUNTDOWN_END_KEY])
+
+  // Persist OTP code
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(CODE_KEY, JSON.stringify(otp))
+    } catch {}
+  }, [otp, CODE_KEY])
+
+  // Resend cooldown — with proper cleanup and sessionStorage end-time persistence
+  useEffect(() => {
     if (countdownIntervalRef.current) {
       clearInterval(countdownIntervalRef.current)
       countdownIntervalRef.current = null
@@ -146,7 +196,28 @@ export default function OtpVerificationField({
 
     if (!isEntering) return
 
-    setCountdown(30)
+    // If we have an end timestamp in storage, use it to compute remaining
+    try {
+      const endRaw = sessionStorage.getItem(COUNTDOWN_END_KEY)
+      if (endRaw) {
+        const remaining = Math.ceil((parseInt(endRaw, 10) - Date.now()) / 1000)
+        if (remaining > 0 && remaining < 30) {
+          setCountdown(remaining)
+        } else if (remaining <= 0) {
+          setCountdown(0)
+          return
+        } else {
+          setCountdown(30)
+          sessionStorage.setItem(COUNTDOWN_END_KEY, String(Date.now() + 30000))
+        }
+      } else {
+        setCountdown(30)
+        sessionStorage.setItem(COUNTDOWN_END_KEY, String(Date.now() + 30000))
+      }
+    } catch {
+      setCountdown(30)
+    }
+
     countdownIntervalRef.current = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
@@ -154,6 +225,7 @@ export default function OtpVerificationField({
             clearInterval(countdownIntervalRef.current)
             countdownIntervalRef.current = null
           }
+          try { sessionStorage.removeItem(COUNTDOWN_END_KEY) } catch {}
           return 0
         }
         return prev - 1
@@ -166,17 +238,16 @@ export default function OtpVerificationField({
         countdownIntervalRef.current = null
       }
     }
-  }, [isEntering])
+  }, [isEntering, COUNTDOWN_END_KEY])
 
   const focusFirstOtp = () => {
-    const id = setTimeout(() => {
-      inputRefs.current[0]?.focus()
-    }, 50)
+    const id = setTimeout(() => inputRefs.current[0]?.focus(), 50)
     trackTimeout(id)
   }
 
   const clearOtpAndFocusFirst = () => {
     setOtp(['', '', '', '', '', ''])
+    try { sessionStorage.setItem(CODE_KEY, JSON.stringify(['', '', '', '', '', ''])) } catch {}
     focusFirstOtp()
   }
 
@@ -187,31 +258,14 @@ export default function OtpVerificationField({
   }
 
   /**
-   * Send OTP — PRODUCTION SAFE
-   * 
-   * Why signInWithOtp + type:'email' instead of updateUser + email_change?
-   * - This component is used during INITIAL account verification (onboarding),
-   *   not for changing an already-verified user's email.
-   * - `updateUser({ email })` + `type: 'email_change'` is the flow for changing
-   *   email of an already authenticated, verified user. It requires the user to
-   *   have a verified address and will fail with "Email change requires verified
-   *   email" or similar if the current email is already verified, or will not
-   *   trigger the correct email template.
-   * - `signInWithOtp({ email })` + `type: 'email'` is the correct flow for
-   *   passwordless initial verification / sign-in. It sends a 6-digit code
-   *   via Supabase's email OTP template and `verifyOtp` with type 'email'
-   *   confirms it. This works for both new and existing users during onboarding
-   *   without the email_change restrictions.
-   * @see https://supabase.com/docs/reference/javascript/auth-signinwithotp
-   * @see https://supabase.com/docs/reference/javascript/auth-verifyotp
+   * Send OTP — uses signInWithOtp + type:'email' for initial verification
+   * Why not updateUser/email_change? See previous file JSDoc — email_change is for
+   * changing an already-verified user's email and fails during initial onboarding.
+   * signInWithOtp with type:'email' is the correct passwordless initial verification flow.
    */
   const handleSendOtp = async () => {
-    // Double-submit protection — actually ignore re-clicks while in flight
     if (isSending || isVerifying) return
-
     const inputValue = value?.trim()
-
-    // Client-side validation before calling Supabase — email invalid or empty
     if (!inputValue) {
       setError(isEmail ? 'Please enter your email address.' : 'Please enter your phone number.')
       return
@@ -226,22 +280,12 @@ export default function OtpVerificationField({
 
     try {
       if (isEmail) {
-        /**
-         * REAL EMAIL LOGIC — production-safe
-         * Sends a 6-digit OTP to the provided email for initial verification.
-         * Uses signInWithOtp, not updateUser, because this is initial verification.
-         */
         const { error } = await supabase.auth.signInWithOtp({
           email: inputValue,
-          options: {
-            // Ensure we don't create a new user if this is used for verification of existing session,
-            // but allow it for onboarding. shouldCreateUser defaults true, which is fine for initial verification.
-            shouldCreateUser: true,
-          },
+          options: { shouldCreateUser: true },
         })
         if (error) throw error
       } else {
-        // SIMULATED PHONE LOGIC — 1s delay, production-safe with tracked timeout
         await new Promise((resolve) => {
           const id = setTimeout(resolve, 1000)
           trackTimeout(id)
@@ -250,9 +294,12 @@ export default function OtpVerificationField({
 
       setOtp(['', '', '', '', '', ''])
       setState('entering')
+      try {
+        sessionStorage.setItem(COUNTDOWN_END_KEY, String(Date.now() + 30000))
+        sessionStorage.setItem(CODE_KEY, JSON.stringify(['', '', '', '', '', '']))
+      } catch {}
       focusFirstOtp()
     } catch (err) {
-      // Explicit error handling — never leaves UI stuck, returns to idle
       const friendly = parseSupabaseError(err, 'send')
       setError(friendly)
       setState('idle')
@@ -260,18 +307,10 @@ export default function OtpVerificationField({
   }
 
   const handleOtpChange = (index, val) => {
-    // Allow only single digit — filter non-digits
     const raw = val || ''
     const digit = raw.replace(/\D/g, '').slice(-1)
-
-    // If user typed non-digit char, ignore it (handles paste of non-digit chars partially)
-    if (raw && !digit && raw.length === 1 && /\D/.test(raw)) {
-      // Explicitly ignore non-digit input, don't advance
-      return
-    }
-
+    if (raw && !digit && raw.length === 1 && /\D/.test(raw)) return
     if (!digit && val !== '') {
-      // If val is empty, it's a delete — allow
       if (val === '') {
         const newOtp = [...otp]
         newOtp[index] = ''
@@ -280,17 +319,12 @@ export default function OtpVerificationField({
       }
       return
     }
-
     const newOtp = [...otp]
     newOtp[index] = digit
     setOtp(newOtp)
     setError('')
-
-    // Auto-advance to next square when a number is typed
     if (digit && index < 5) {
-      const id = setTimeout(() => {
-        inputRefs.current[index + 1]?.focus()
-      }, 10)
+      const id = setTimeout(() => inputRefs.current[index + 1]?.focus(), 10)
       trackTimeout(id)
     }
   }
@@ -301,9 +335,7 @@ export default function OtpVerificationField({
         const newOtp = [...otp]
         newOtp[index - 1] = ''
         setOtp(newOtp)
-        const id = setTimeout(() => {
-          inputRefs.current[index - 1]?.focus()
-        }, 10)
+        const id = setTimeout(() => inputRefs.current[index - 1]?.focus(), 10)
         trackTimeout(id)
         e.preventDefault()
       } else if (otp[index]) {
@@ -313,18 +345,13 @@ export default function OtpVerificationField({
       }
     }
     if (e.key === 'ArrowLeft' && index > 0) {
-      const id = setTimeout(() => {
-        inputRefs.current[index - 1]?.focus()
-      }, 10)
+      const id = setTimeout(() => inputRefs.current[index - 1]?.focus(), 10)
       trackTimeout(id)
     }
     if (e.key === 'ArrowRight' && index < 5) {
-      const id = setTimeout(() => {
-        inputRefs.current[index + 1]?.focus()
-      }, 10)
+      const id = setTimeout(() => inputRefs.current[index + 1]?.focus(), 10)
       trackTimeout(id)
     }
-    // Prevent typing non-digits (except navigation keys)
     if (e.key.length === 1 && /\D/.test(e.key) && !e.ctrlKey && !e.metaKey) {
       e.preventDefault()
     }
@@ -333,63 +360,29 @@ export default function OtpVerificationField({
   const handleOtpPaste = (e) => {
     e.preventDefault()
     const pastedText = e.clipboardData.getData('text') || ''
-
-    // Handle paste of code with non-digit characters or wrong length
-    // Extract digits only
     const digitsOnly = pastedText.replace(/\D/g, '')
-
     if (!digitsOnly) {
-      // Paste contained no digits at all — ignore but show hint
       setError('Pasted code contains no digits. Please paste a 6-digit numeric code.')
       return
     }
-
-    if (pastedText.replace(/\D/g, '').length !== pastedText.trim().length) {
-      // Pasted string had non-digit characters — we filtered them, but inform via filling
-      // We don't hard-error, we just filter and fill (common UX), but clear previous error
-      setError('')
-    }
-
-    // Handle wrong length — if less than 6, fill partially; if more, take first 6
+    setError('')
     const newOtp = ['', '', '', '', '', '']
     for (let i = 0; i < Math.min(6, digitsOnly.length); i++) {
       newOtp[i] = digitsOnly[i]
     }
     setOtp(newOtp)
-
-    if (digitsOnly.length < 6) {
-      // Wrong length (too short) — focus next empty box, don't auto-verify
-      const nextIndex = digitsOnly.length
-      const id = setTimeout(() => {
-        inputRefs.current[nextIndex]?.focus()
-      }, 10)
-      trackTimeout(id)
-    } else {
-      // Full 6 digits pasted — focus last box
-      const id = setTimeout(() => {
-        inputRefs.current[5]?.focus()
-      }, 10)
-      trackTimeout(id)
-    }
+    const nextIndex = digitsOnly.length < 6 ? digitsOnly.length : 5
+    const id = setTimeout(() => inputRefs.current[nextIndex]?.focus(), 10)
+    trackTimeout(id)
   }
 
-  /**
-   * Verify OTP — PRODUCTION SAFE
-   * For email: uses verifyOtp with type 'email' (not email_change)
-   * For tel: simulated 1s delay, any 6-digit accepted
-   * On failure: always returns to 'entering' with OTP cleared and focus reset to first box (never stuck)
-   */
   const handleVerify = async () => {
-    // Double-submit protection
     if (isVerifying || isSending) return
-
     const otpString = otp.join('')
-
     if (otpString.length !== 6) {
       setError('Please enter the complete 6-digit code.')
       return
     }
-
     if (!/^\d{6}$/.test(otpString)) {
       setError('Code must be 6 digits. Please check and try again.')
       return
@@ -400,12 +393,6 @@ export default function OtpVerificationField({
 
     try {
       if (isEmail) {
-        /**
-         * REAL EMAIL VERIFICATION
-         * Verifies the 6-digit code sent via signInWithOtp.
-         * Type 'email' is correct for initial verification flow.
-         * Using 'email_change' would fail once user already has verified address.
-         */
         const { error } = await supabase.auth.verifyOtp({
           email: value.trim(),
           token: otpString,
@@ -413,7 +400,6 @@ export default function OtpVerificationField({
         })
         if (error) throw error
       } else {
-        // SIMULATED PHONE LOGIC — 1s delay, any 6-digit = success
         await new Promise((resolve) => {
           const id = setTimeout(resolve, 1000)
           trackTimeout(id)
@@ -421,16 +407,16 @@ export default function OtpVerificationField({
       }
 
       setState('verified')
+      try {
+        sessionStorage.setItem(VERIFIED_KEY, 'true')
+        sessionStorage.setItem(STEP_KEY, 'verified')
+      } catch {}
       onVerified?.(value.trim())
     } catch (err) {
-      // Explicit error path — never leaves UI stuck, returns to entering with OTP cleared and focus reset
       const friendly = parseSupabaseError(err, 'verify')
       setError(friendly)
       setState('entering')
-      // Clear OTP boxes and reset focus to first box as required
-      const id = setTimeout(() => {
-        clearOtpAndFocusFirst()
-      }, 50)
+      const id = setTimeout(() => clearOtpAndFocusFirst(), 50)
       trackTimeout(id)
     }
   }
@@ -523,7 +509,7 @@ export default function OtpVerificationField({
         <div className="mt-5 animate-fade-up rounded-2xl bg-white p-5 ring-1 ring-gray-200 dark:bg-slate-900 dark:ring-slate-800">
           <div className="flex items-center justify-between">
             <p className="text-[13px] font-medium tracking-[-0.01em] text-slate-700 dark:text-slate-300">
-              Enter 6-digit code sent to <span className="font-semibold text-slate-900 dark:text-white">{isEmail ? value : value}</span>
+              Enter 6-digit code sent to <span className="font-semibold text-slate-900 dark:text-white">{value}</span>
             </p>
             <span className="mono text-[11px] tracking-[-0.01em] text-slate-400 dark:text-slate-500">{isEmail ? 'email' : 'simulated'}</span>
           </div>
@@ -604,7 +590,7 @@ export default function OtpVerificationField({
 
       {!isEntering && !isVerified && !isVerifying && (
         <p className="mono mt-2 text-[11px] tracking-[-0.01em] text-slate-400 dark:text-slate-500">
-          {isEmail ? 'Real Supabase OTP via signInWithOtp • type: email • check inbox' : 'Simulated • any 6-digit code works • 1s delay'}
+          {isEmail ? 'Real Supabase OTP via signInWithOtp • type: email • check inbox' : 'Simulated • any 6-digit code works • 1s delay'} • persists in sessionStorage
         </p>
       )}
     </div>

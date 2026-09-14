@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { homeForRole, useAuth } from '../lib/AuthContext'
@@ -44,6 +44,18 @@ const PURPOSES = [
   'Other',
 ]
 
+const STORAGE_KEY = 'internx_details_form'
+
+function loadDetailsForm() {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY)
+    if (!raw) return null
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
 const inputBase =
   'block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-[13.5px] tracking-[-0.01em] text-slate-900 placeholder-slate-400 shadow-sm ring-1 ring-gray-200 transition focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/20 dark:border-slate-800 dark:bg-slate-900 dark:text-white dark:placeholder-slate-500 dark:ring-slate-800 dark:focus:border-white dark:focus:ring-white/20'
 
@@ -80,26 +92,59 @@ export default function DetailsPage() {
   const user = session?.user
   const urlRole = ['student', 'industry', 'academician'].includes(searchParams.get('role')) ? searchParams.get('role') : null
 
+  // TASK 1: Persist form fields to sessionStorage — survives unmount during tab switching
+  const saved = loadDetailsForm()
   const initialFullName = user?.user_metadata?.full_name || user?.user_metadata?.name || ''
-  const [firstName, setFirstName] = useState(initialFullName.split(' ')[0] || '')
-  const [lastName, setLastName] = useState(initialFullName.split(' ').slice(1).join(' ') || '')
-  const [email, setEmail] = useState(user?.email || '')
-  const [emailVerified, setEmailVerified] = useState(false)
-  const [phone, setPhone] = useState('')
-  const [phoneVerified, setPhoneVerified] = useState(false)
-  const [aadhaar, setAadhaar] = useState('')
-  const [gender, setGender] = useState('')
 
-  const [studentType, setStudentType] = useState('')
-  const [domain, setDomain] = useState('')
-  const [specialization, setSpecialization] = useState('')
-  const [institute, setInstitute] = useState('')
+  const [firstName, setFirstName] = useState(() => saved?.firstName || initialFullName.split(' ')[0] || '')
+  const [lastName, setLastName] = useState(() => saved?.lastName || initialFullName.split(' ').slice(1).join(' ') || '')
+  const [email, setEmail] = useState(() => saved?.email || user?.email || '')
+  const [emailVerified, setEmailVerified] = useState(() => saved?.emailVerified || false)
+  const [phone, setPhone] = useState(() => saved?.phone || '')
+  const [phoneVerified, setPhoneVerified] = useState(() => saved?.phoneVerified || false)
+  const [aadhaar, setAadhaar] = useState(() => saved?.aadhaar || '')
+  const [gender, setGender] = useState(() => saved?.gender || '')
 
-  const [purposes, setPurposes] = useState([])
-  const [otherPurpose, setOtherPurpose] = useState('')
+  const [studentType, setStudentType] = useState(() => saved?.studentType || '')
+  const [domain, setDomain] = useState(() => saved?.domain || '')
+  const [specialization, setSpecialization] = useState(() => saved?.specialization || '')
+  const [institute, setInstitute] = useState(() => saved?.institute || '')
+
+  const [purposes, setPurposes] = useState(() => saved?.purposes || [])
+  const [otherPurpose, setOtherPurpose] = useState(() => saved?.otherPurpose || '')
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  // Persist to sessionStorage on every change — survives unmount when AuthContext briefly triggers loading on focus
+  useEffect(() => {
+    try {
+      const payload = {
+        firstName,
+        lastName,
+        email,
+        emailVerified,
+        phone,
+        phoneVerified,
+        aadhaar,
+        gender,
+        studentType,
+        domain,
+        specialization,
+        institute,
+        purposes,
+        otherPurpose,
+      }
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+    } catch {}
+  }, [firstName, lastName, email, emailVerified, phone, phoneVerified, aadhaar, gender, studentType, domain, specialization, institute, purposes, otherPurpose])
+
+  // Keep email in sync if session loads after mount and no saved value
+  useEffect(() => {
+    if (session?.user?.email && !email) {
+      setEmail(session.user.email)
+    }
+  }, [session?.user?.email, email])
 
   const togglePurpose = (p) => {
     setPurposes((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]))
@@ -165,11 +210,22 @@ export default function DetailsPage() {
         setError(`Couldn't save your details: ${minimalError.message}. You can still continue — your basic profile is created.`)
         setProfile({ id: user.id, email: user.email, full_name: fullName, role })
         setStatus('ready')
+        try { sessionStorage.removeItem(STORAGE_KEY) } catch {}
         navigate(homeForRole(role), { replace: true })
         setSaving(false)
         return
       }
     }
+
+    // Clear persisted form on success — onboarding complete
+    try { sessionStorage.removeItem(STORAGE_KEY) } catch {}
+    // Also clear OTP steps
+    try {
+      sessionStorage.removeItem('internx_otp_step_email')
+      sessionStorage.removeItem('internx_otp_step_tel')
+      sessionStorage.removeItem('internx_otp_verified_email')
+      sessionStorage.removeItem('internx_otp_verified_tel')
+    } catch {}
 
     setProfile({ id: user.id, email: user.email, full_name: fullName, role })
     setStatus('ready')
@@ -198,7 +254,7 @@ export default function DetailsPage() {
             <span className="text-[15px] font-semibold tracking-[-0.02em] text-slate-900 dark:text-white">Intern X</span>
           </Link>
           <div className="mono hidden items-center gap-2 text-[11px] tracking-[0.02em] text-slate-400 dark:text-slate-500 sm:flex">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Step 2 of 2 • Complete profile
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Step 2 of 2 • Complete profile • sessionStorage persisted
           </div>
         </div>
 
@@ -208,12 +264,12 @@ export default function DetailsPage() {
           </div>
           <h1 className="mt-4 text-[28px] font-bold leading-[1.1] tracking-[-0.03em] text-slate-900 dark:text-white sm:text-[32px]">Complete your profile</h1>
           <p className="mt-2 max-w-[600px] text-[14px] leading-6 tracking-[-0.01em] text-slate-600 dark:text-slate-300">
-            Verify your email and phone with OTP, then finish your profile. This helps us keep 100% verified profiles for recruiters.
+            Verify your email and phone with OTP, then finish your profile. Your progress is automatically saved — even if you switch tabs to check your email.
           </p>
         </div>
 
         <div className="space-y-5">
-          <Section number="1" title="General Info" subtitle="Verify your contact details — email uses real Supabase OTP, phone is simulated for demo.">
+          <Section number="1" title="General Info" subtitle="Verify your contact details — state persists in sessionStorage so tab switching doesn't lose OTP boxes.">
             <div className="grid gap-6">
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
