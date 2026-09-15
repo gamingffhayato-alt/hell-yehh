@@ -19,6 +19,14 @@ function Check(props) {
     </svg>
   )
 }
+function UploadIcon(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <path d="M12 16V3M8 7l4-4 4 4" />
+      <path d="M3 17v2a2 2 0 002 2h14a2 2 0 002-2v-2" />
+    </svg>
+  )
+}
 
 const GENDERS = ['Male', 'Female', 'Transgender']
 const STUDENT_TYPES = [
@@ -108,8 +116,13 @@ export default function DetailsPage() {
   const [purposes, setPurposes] = useState(() => saved?.purposes || [])
   const [otherPurpose, setOtherPurpose] = useState(() => saved?.otherPurpose || '')
 
+  // Resume Upload Logic — captures actual File object
+  const [resumeFile, setResumeFile] = useState(null)
+  const [resumeDragActive, setResumeDragActive] = useState(false)
+
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [toast, setToast] = useState(null)
 
   useEffect(() => {
     try {
@@ -126,6 +139,25 @@ export default function DetailsPage() {
     setPurposes((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]))
   }, [])
 
+  const showToast = useCallback((message, isError = false) => {
+    setToast({ id: Date.now(), message, isError })
+    setTimeout(() => setToast(null), 3500)
+  }, [])
+
+  const handleResumeDrop = useCallback((e) => {
+    e.preventDefault()
+    setResumeDragActive(false)
+    const f = e.dataTransfer.files?.[0]
+    if (f) {
+      if (f.size > 5 * 1024 * 1024) {
+        showToast('Resume must be under 5 MB', true)
+        return
+      }
+      setResumeFile(f)
+      showToast(`Resume selected: ${f.name}`)
+    }
+  }, [showToast])
+
   const canSave =
     firstName.trim() &&
     lastName.trim() &&
@@ -141,25 +173,66 @@ export default function DetailsPage() {
     (purposes.includes('Other') ? otherPurpose.trim() : true)
 
   /**
-   * FIXED: Prevent hard refresh, sync auth state BEFORE navigation, selective storage wipe
-   * - e.preventDefault() first line stops browser reload that wipes React state
-   * - Save only valid columns (profiles table has: id, email, full_name, role, institution, course, stream...)
-   * - Mark profile complete in global context FIRST so ProtectedRoute doesn't bounce back to /details
-   * - Selectively remove draft keys only — DO NOT use sessionStorage.clear() (destroys Supabase tokens)
-   * - navigate('/dashboard', { replace: true }) bypasses history
+   * INTEGRATED: Supabase Storage + Database
+   * - Uploads resume to `resumes` bucket: `${user.id}/${file.name}` with upsert
+   * - Gets public URL
+   * - Updates profiles table with full mapping, fallback to minimal columns if schema mismatch
+   * - Handles loading/error toasts
+   * - Preserves redirect-loop fix: sync auth BEFORE navigation, selective storage wipe
    */
   const handleSave = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    
+    e.preventDefault()
+    if (!canSave || saving) return
+    setSaving(true)
+    setError('')
+
     try {
       if (!user) throw new Error('No active session')
       const fullName = `${firstName.trim()} ${lastName.trim()}`.trim()
       const role = urlRole || 'student'
 
-      // Only use columns that actually exist in public.profiles (see supabase-setup.sql)
-      // Table: id, email, full_name, role, institution, course, stream, class_year, etc.
-      // Previous bug: tried to upsert phone, aadhaar_number, gender, etc. which don't exist → upsert fails → role never saved → redirect loop
+      let uploadedResumeUrl = null
+
+      // 1. Resume Upload Logic — Supabase Storage
+      if (resumeFile) {
+        showToast('Uploading resume...')
+        const filePath = `${user.id}/${resumeFile.name}`
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('resumes')
+          .upload(filePath, resumeFile, { upsert: true })
+
+        if (uploadError) {
+          console.warn('Resume upload failed (bucket may not exist):', uploadError.message)
+          // Don't block onboarding — show toast but continue
+          showToast(`Resume upload skipped: ${uploadError.message}`, true)
+        } else {
+          // Get public URL
+          const { data: publicUrlData } = supabase.storage.from('resumes').getPublicUrl(filePath)
+          uploadedResumeUrl = publicUrlData?.publicUrl || null
+          showToast('Resume uploaded successfully')
+        }
+      }
+
+      // 2. Profile Data Database Update — full mapping per task spec
+      // We attempt extended columns, but gracefully fallback if table doesn't have them (per supabase-setup.sql)
+      const purposeValue = purposes.includes('Other') && otherPurpose.trim() ? [...purposes.filter(p => p !== 'Other'), otherPurpose.trim()].join(', ') : purposes.join(', ')
+
+      const extendedProfile = {
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        phone: phone.trim(),
+        aadhaar_number: aadhaar.trim(),
+        gender: gender,
+        student_type: studentType,
+        domain: domain.trim(),
+        specialization: specialization.trim(),
+        institution: institute.trim(),
+        purpose: purposeValue,
+        resume_url: uploadedResumeUrl,
+        role: 'student',
+        updated_at: new Date().toISOString(),
+      }
+
       const validProfile = {
         id: user.id,
         email: user.email,
@@ -170,52 +243,77 @@ export default function DetailsPage() {
         stream: specialization.trim(),
       }
 
-      const { error: upsertError } = await supabase.from('profiles').upsert([validProfile])
-      if (upsertError) {
-        console.error('profiles upsert failed:', upsertError.message)
-        // Fallback to absolute minimal valid columns
-        await supabase.from('profiles').upsert([{
-          id: user.id,
-          email: user.email,
-          full_name: fullName,
-          role: role,
-        }])
+      // Try extended update first (if columns exist)
+      let updateError = null
+      try {
+        const { error } = await supabase.from('profiles').update(extendedProfile).eq('id', user.id)
+        updateError = error
+        if (error) throw error
+      } catch (extErr) {
+        console.warn('Extended profile update failed, falling back to valid columns:', extErr?.message)
+        // Fallback: try upsert with valid columns only (ensures role is saved, prevents redirect loop)
+        const { error: upsertError } = await supabase.from('profiles').upsert([validProfile])
+        if (upsertError) {
+          console.error('Valid profile upsert also failed:', upsertError.message)
+          // Last resort: minimal
+          const { error: minimalError } = await supabase.from('profiles').upsert([{
+            id: user.id,
+            email: user.email,
+            full_name: fullName,
+            role: role,
+          }])
+          if (minimalError) {
+            throw new Error(`Profile save failed: ${minimalError.message}`)
+          }
+        }
       }
 
-      // 1. Mark profile as complete in global context FIRST
-      const newProfile = { id: user.id, email: user.email, full_name: fullName, role, institution: institute.trim() }
+      // 3. Mark profile as complete in global context FIRST — prevents ProtectedRoute bounce
+      const newProfile = { 
+        id: user.id, 
+        email: user.email, 
+        full_name: fullName, 
+        role, 
+        institution: institute.trim(),
+        resume_url: uploadedResumeUrl,
+      }
+      
       if (typeof completeUserProfile === 'function') {
-        await completeUserProfile(newProfile);
+        await completeUserProfile(newProfile)
       } else {
         setProfile(newProfile)
         setStatus('ready')
         await new Promise((r) => setTimeout(r, 0))
       }
 
-      // 2. Selectively clear form drafts ONLY — DO NOT use .clear()
-      sessionStorage.removeItem('internx_draft_profile');
-      sessionStorage.removeItem('internx_details_form');
-      sessionStorage.removeItem('internx_otp_email');
-      sessionStorage.removeItem('internx_otp_phone');
-      sessionStorage.removeItem('internx_otp_step_email');
-      sessionStorage.removeItem('internx_otp_step_tel');
-      sessionStorage.removeItem('internx_otp_verified_email');
-      sessionStorage.removeItem('internx_otp_verified_tel');
-      sessionStorage.removeItem('internx_otp_code_email');
-      sessionStorage.removeItem('internx_otp_code_tel');
-      sessionStorage.removeItem('internx_otp_countdown_end_email');
-      sessionStorage.removeItem('internx_otp_countdown_end_tel');
+      showToast('Profile saved successfully!')
 
-      // 3. Use React Router to navigate, bypassing history
-      navigate('/dashboard', { replace: true });
+      // 4. Selectively clear form drafts ONLY — DO NOT use sessionStorage.clear()
+      sessionStorage.removeItem('internx_draft_profile')
+      sessionStorage.removeItem('internx_details_form')
+      sessionStorage.removeItem('internx_otp_email')
+      sessionStorage.removeItem('internx_otp_phone')
+      sessionStorage.removeItem('internx_otp_step_email')
+      sessionStorage.removeItem('internx_otp_step_tel')
+      sessionStorage.removeItem('internx_otp_verified_email')
+      sessionStorage.removeItem('internx_otp_verified_tel')
+      sessionStorage.removeItem('internx_otp_code_email')
+      sessionStorage.removeItem('internx_otp_code_tel')
+      sessionStorage.removeItem('internx_otp_countdown_end_email')
+      sessionStorage.removeItem('internx_otp_countdown_end_tel')
+
+      // 5. Navigate to dashboard
+      navigate('/dashboard', { replace: true })
       
-    } catch (error) {
-      console.error("Save failed:", error);
-      setError(error?.message || 'Save failed — please try again.')
+    } catch (err) {
+      console.error('Save failed:', err)
+      const msg = err?.message || 'Save failed — please try again.'
+      setError(msg)
+      showToast(msg, true)
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-white px-4 py-8 text-slate-900 antialiased selection:bg-slate-900 selection:text-white dark:bg-slate-950 dark:text-white dark:selection:bg-white dark:selection:text-slate-950 sm:px-6 sm:py-10">
@@ -243,9 +341,6 @@ export default function DetailsPage() {
             </span>
             <span className="text-[15px] font-semibold tracking-[-0.02em] text-slate-900 dark:text-white">Intern X</span>
           </Link>
-          <div className="mono hidden items-center gap-2 text-[11px] tracking-[0.02em] text-slate-400 dark:text-slate-500 sm:flex">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Step 2 of 2 • Complete profile
-          </div>
         </div>
 
         <div className="mb-8">
@@ -254,12 +349,12 @@ export default function DetailsPage() {
           </div>
           <h1 className="mt-4 text-[28px] font-bold leading-[1.1] tracking-[-0.03em] text-slate-900 dark:text-white sm:text-[32px]">Complete your profile</h1>
           <p className="mt-2 max-w-[600px] text-[14px] leading-6 tracking-[-0.01em] text-slate-600 dark:text-slate-300">
-            Verify your email and phone with OTP, then finish your profile.
+            Verify your details and upload your resume to get matched with top internships.
           </p>
         </div>
 
         <form onSubmit={handleSave} className="space-y-5">
-          <Section number="1" title="General Info" subtitle="Verify your contact details — state persists in sessionStorage so tab switching doesn't lose OTP boxes.">
+          <Section number="1" title="General Info" subtitle="Verify your contact details — state persists so tab switching doesn't lose progress.">
             <div className="grid gap-6">
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
@@ -301,7 +396,7 @@ export default function DetailsPage() {
             </div>
           </Section>
 
-          <Section number="2" title="Academic Details" subtitle="Helps us map you to trending industry skills and relevant roles.">
+          <Section number="2" title="Academic Details" subtitle="Helps us map you to trending skills and relevant roles.">
             <div className="space-y-5">
               <div>
                 <Label>Student type</Label>
@@ -374,6 +469,57 @@ export default function DetailsPage() {
             )}
           </Section>
 
+          <Section number="4" title="Resume" subtitle="Upload your latest resume — we’ll store it securely and use it for ATS matching. PDF only, max 5 MB.">
+            <div>
+              <Label htmlFor="resume">Resume upload</Label>
+              <div
+                onDragOver={(e) => { e.preventDefault(); setResumeDragActive(true) }}
+                onDragLeave={(e) => { e.preventDefault(); setResumeDragActive(false) }}
+                onDrop={handleResumeDrop}
+                className={`group relative flex flex-col items-center justify-center rounded-xl border border-dashed px-6 py-10 text-center transition ${
+                  resumeDragActive
+                    ? 'border-slate-900 bg-slate-50 dark:border-white dark:bg-slate-800'
+                    : 'border-gray-300 bg-slate-50/50 hover:border-slate-400 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/30 dark:hover:border-slate-600'
+                }`}
+              >
+                <input
+                  id="resume"
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    if (f) {
+                      if (f.size > 5 * 1024 * 1024) {
+                        showToast('Resume must be under 5 MB', true)
+                        return
+                      }
+                      setResumeFile(f)
+                      showToast(`Resume selected: ${f.name}`)
+                    }
+                  }}
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                />
+                <span className="grid h-10 w-10 place-items-center rounded-xl bg-white text-slate-600 ring-1 ring-gray-200 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-800">
+                  <UploadIcon className="h-5 w-5" />
+                </span>
+                <p className="mt-3 text-[13.5px] font-medium tracking-[-0.01em] text-slate-900 dark:text-white">
+                  {resumeFile ? resumeFile.name : 'Drop your resume here or click to browse'}
+                </p>
+                <p className="mono mt-1 text-[11px] tracking-[-0.01em] text-slate-500 dark:text-slate-400">
+                  PDF, DOC, DOCX up to 5 MB • stored in secure bucket
+                </p>
+                {resumeFile && (
+                  <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-medium tracking-[-0.01em] text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-900/50">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {resumeFile.name} • {(resumeFile.size / 1024).toFixed(0)} KB
+                  </span>
+                )}
+              </div>
+              <p className="mono mt-2 text-[11px] text-slate-400 dark:text-slate-500">
+                Saved to Supabase Storage: <span className="font-medium">resumes/{'{user.id}'}/{'{filename}'}</span> with upsert
+              </p>
+            </div>
+          </Section>
+
           {error && (
             <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700 ring-1 ring-red-200 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300 dark:ring-red-900/30" role="alert">
               {error}
@@ -382,7 +528,7 @@ export default function DetailsPage() {
 
           <div className="flex flex-col gap-3 rounded-2xl bg-slate-50 p-4 ring-1 ring-gray-200 dark:bg-slate-900/50 dark:ring-slate-800 sm:flex-row sm:items-center sm:justify-between sm:p-5">
             <div className="mono text-[11px] leading-5 text-slate-500 dark:text-slate-400">
-              Signed in as <span className="font-medium text-slate-700 dark:text-slate-300">{user?.email}</span> • Email {emailVerified ? '✓ verified' : 'not verified'} • Phone {phoneVerified ? '✓ verified' : 'not verified'}
+              Signed in as <span className="font-medium text-slate-700 dark:text-slate-300">{user?.email}</span> • {resumeFile ? `Resume ready: ${resumeFile.name}` : 'No resume selected (optional)'}
             </div>
             <button type="submit" disabled={!canSave || saving} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-7 text-[13.5px] font-semibold tracking-[-0.01em] text-white shadow-sm ring-1 ring-slate-900 transition hover:bg-black active:scale-[0.99] disabled:opacity-50 dark:bg-white dark:text-slate-950 dark:ring-white dark:hover:bg-slate-100 sm:w-auto">
               {saving && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white dark:border-slate-900/30 dark:border-t-slate-900" />}
@@ -392,6 +538,17 @@ export default function DetailsPage() {
           </div>
         </form>
       </div>
+
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 z-[80] -translate-x-1/2 animate-fade-up">
+          <div className={`flex items-center gap-3 rounded-full px-5 py-3 text-[13px] font-medium tracking-[-0.01em] shadow-xl ring-1 ${toast.isError ? 'bg-red-600 text-white ring-red-600 dark:bg-red-500' : 'bg-slate-900 text-white ring-slate-900 dark:bg-white dark:text-slate-950 dark:ring-white'}`}>
+            <span className={`grid h-6 w-6 place-items-center rounded-full ${toast.isError ? 'bg-white/15' : 'bg-white/15 text-white dark:bg-slate-900/10 dark:text-slate-950'}`}>
+              <Check className="h-3.5 w-3.5" />
+            </span>
+            {toast.message}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
